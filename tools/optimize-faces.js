@@ -175,6 +175,11 @@ function trim(src) {
 // Every source already ships with a proper alpha channel, so this is
 // purely a trim + downscale + re-encode pass.
 const JOBS = [
+  // Pre-isolated heads. Trimming these to their alpha box gives an exact
+  // head bounding box, so no crop guessing is needed at runtime.
+  ['santi-just-head.png', 'santi-head.png'],
+  ['santi-mj-just-head.png', 'santi-mj-head.png'],
+
   ['santi1nobg.png', 'santi.png'],
   ['santi2nobg.png', 'santi-side.png'],
   ['santi3nobg.png', 'santi-chain.png'],

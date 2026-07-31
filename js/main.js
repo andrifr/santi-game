@@ -9,14 +9,15 @@
 
   // Needed before anything is drawn in-game. Kept small so the first
   // frame on mobile isn't waiting on a megabyte of art.
+  // `head` points at an already-isolated head, which beats cropping one
+  // out of the bust - no chin gets clipped and no crop needs guessing.
+  // `src` is still the full portrait, used for the circular face bubbles
+  // on menus and scoreboards.
   var CORE = [
-    { key: 'santi', src: F + 'santi.png' },
+    { key: 'santi', src: F + 'santi.png',    head: F + 'santi-head.png' },
     // Dark Santi wears the hat and the shades. Ungraded - the art is
     // already dark and the gold rims are the best part of it.
-    // Explicit crop: his jacket collar sits high and the hat brim is the
-    // widest thing in frame, so the silhouette never pinches at a real
-    // neck and auto-detection stops at his lower lip.
-    { key: 'dark',  src: F + 'santi-mj.png', faceOpts: { crop: 0.79 } },
+    { key: 'dark',  src: F + 'santi-mj.png', head: F + 'santi-mj-head.png' },
   ];
 
   // Everything else: alternate skins, Daley, Rue. Only used on menus and

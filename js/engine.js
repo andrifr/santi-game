@@ -480,8 +480,9 @@
   // Character cutouts (transparent PNGs). These are already illustrated
   // in a cartoon style, so by default they're used as-is - `cartoonify`
   // above is only applied to entries that ask for it (raw photos).
-  art.sprites = {};   // full cutout (head + torso)
-  art.heads = {};     // head crop, alpha preserved, for the runner body
+  art.sprites = {};    // full cutout (head + torso)
+  art.heads = {};      // head art, alpha preserved, for the animated body
+  art.headWhole = {};  // true when art.heads[key] is an exact head bbox
 
   // Applies a colour grade in place, leaving transparent pixels alone.
   function gradeSprite(img, grade) {
@@ -607,11 +608,24 @@
   };
 
   /* Loads character art.
-     item: { key, src, grade?, cartoonify?, faceOpts? }
+     item: { key, src, head?, grade?, cartoonify?, faceOpts? }
+     `head` is an already-isolated head image; when given it is used
+     as-is and no head is cropped out of the bust.
      A missing file is not an error - the drawn placeholder is used. */
   art.load = function (list, done) {
     var pending = list.length;
     if (!pending) return done && done();
+
+    list.forEach(function (item) {
+      if (!item.head) return;
+      var hi = new Image();
+      hi.onload = function () {
+        art.heads[item.key] = item.grade ? gradeSprite(hi, item.grade) : hi;
+        art.headWhole[item.key] = true;
+      };
+      hi.src = item.head;                 // failure just leaves the crop path
+    });
+
     list.forEach(function (item) {
       var img = new Image();
       img.onload = function () {
@@ -621,8 +635,11 @@
           } else {
             var sprite = item.grade ? gradeSprite(img, item.grade) : img;
             art.sprites[item.key] = sprite;
-            art.heads[item.key] = art.headFromSprite(sprite, item.faceOpts);
             art.faces[item.key] = art.faceFromSprite(sprite, item.faceOpts);
+            // A dedicated head image wins over cropping one out of the bust.
+            if (!art.headWhole[item.key]) {
+              art.heads[item.key] = art.headFromSprite(sprite, item.faceOpts);
+            }
           }
           art.loaded[item.key] = true;
         } catch (e) { /* keep the placeholder */ }
@@ -720,13 +737,21 @@
   art.drawHead = function (g, cx, cy, r, key, variant) {
     var head = art.heads[key];
     if (head) {
-      // Width and top are fixed, height follows the crop's aspect. That
-      // way the face always lands in the same place whatever the crop
-      // includes, and the extra below it - jaw, neck, collar - hangs
-      // down over the torso. Head is drawn last, so it reads as in front.
-      var hw = r * 2.18;
-      var hh = hw * (head.height / head.width);
-      g.drawImage(head, cx - hw / 2, cy - r * 1.08, hw, hh);
+      var hw, hh;
+      if (art.headWhole[key]) {
+        // An exact head bounding box. Anchor by the CHIN rather than the
+        // top, so every portrait's jaw lands on the same spot on the
+        // body no matter how tall its hair or hat is.
+        hw = r * 1.95;
+        hh = hw * (head.height / head.width);
+        g.drawImage(head, cx - hw / 2, cy + r * 1.16 - hh, hw, hh);
+      } else {
+        // A crop off the top of a bust: fixed width and top, height from
+        // the aspect, with jaw and collar hanging over the torso.
+        hw = r * 2.18;
+        hh = hw * (head.height / head.width);
+        g.drawImage(head, cx - hw / 2, cy - r * 1.08, hw, hh);
+      }
       return;
     }
     var face = art.faces[key];
