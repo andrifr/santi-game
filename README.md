@@ -123,6 +123,9 @@ Everything else in the flat is tappable too — the TV, the couch, the
 fridge, the alarm clock, the bin outside — and answers with a line
 rather than a shrug. The day is the spine, not the whole of it.
 
+The bathroom mirror is worth a look. Most of the time it agrees with
+him. About a third of the time it doesn't show him at all.
+
 ## Sound
 
 All effects are synthesized in the browser — no audio files, no load

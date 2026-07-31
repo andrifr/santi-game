@@ -42,11 +42,16 @@
         flavor: ['1.2M subscribers. One day.', 'SANTI CAN\'T - the poster.'] },
 
       // --- bathroom ---
-      { id: 'sink',      x: 940,  w: 150, kind: 'sink',      label: 'SINK',
-        flavor: ['Rinsed. Good enough.', 'Water. Cold. Awake now.'] },
+      { id: 'sink',      x: 940,  w: 150, kind: 'sink',      label: 'MIRROR' },
       { id: 'hairspray', x: 1120, w: 70,  kind: 'hairspray', label: 'HAIRSPRAY' },
       { id: 'toilet',    x: 1290, w: 110, kind: 'toilet',    label: 'TOILET',
-        flavor: ['Not now.', 'Later. Definitely later.'] },
+        flavor: [
+          'Morning poop: done. Magnificent.',
+          'Ten minutes well spent in there.',
+          'Still flushing fine. Daley has not clogged it yet.',
+          'No clogs today. A good day.',
+          'That was a personal best, honestly.',
+        ] },
 
       // --- closet ---
       { id: 'rack',      x: 1650, w: 300, kind: 'rack',      label: 'SUPREME TEES' },
@@ -102,10 +107,11 @@
 
   var WINGS_PER_TASK = 40;
 
+  // `ink` is the wordmark colour and must contrast with `box`.
   var SHIRTS = [
-    { name: 'CLASSIC RED', shirt: '#e8202a', box: '#ffffff', boxText: '#e8202a' },
-    { name: 'PURPLE',      shirt: '#7c4dff', box: '#e8202a', boxText: '#ffffff' },
-    { name: 'FOREST',      shirt: '#2f7d4f', box: '#ffd400', boxText: '#17120a' },
+    { name: 'CLASSIC RED', shirt: '#e8202a', box: '#ffffff', ink: '#e8202a' },
+    { name: 'PURPLE',      shirt: '#7c4dff', box: '#e8202a', ink: '#ffffff' },
+    { name: 'FOREST',      shirt: '#2f7d4f', box: '#ffd400', ink: '#17120a' },
   ];
 
   // ---------------------------------------------------------------
@@ -129,6 +135,7 @@
       videoMade: false,
       wingsLeft: 5,
       bubble: null, bubbleT: 0,
+      mirrorScare: 0,
       overlay: null,                          // 'shirt' | 'call' | 'video' | 'nuke' | 'spray' | 'wings'
       ov: {},                                 // overlay working state
       paused: false,
@@ -172,6 +179,8 @@
   function useObject(o) {
     var tk = task();
     var isTarget = tk && tk.target === o.id;
+
+    if (o.id === 'sink') { lookInMirror(); return; }
 
     if (!isTarget) {
       // Everything is pokeable, it just doesn't move the day along.
@@ -220,7 +229,11 @@
 
       case 'tree':
         st.ruePooped = true;
-        say('Good girl. Every single time.');
+        say(SG.pick([
+          "Dumb dog won't poop.",
+          "Come on Rue. One poop. That's all.",
+          "Twenty minutes. Nothing. Dumb dog won't poop.",
+        ]));
         completeTask();
         break;
 
@@ -245,8 +258,31 @@
 
       case 'sleep':
         st.inBed = true;
-        openOverlay('sleep', { t: 0 });
+        openOverlay('sleep', { t: 0, stage: 0, line: 0 });
         break;
+    }
+  }
+
+  var MIRROR_NICE = [
+    'Devastatingly handsome. As usual.',
+    'The hair is doing something today.',
+    'Genuinely, who is that guy.',
+    'Not one bad angle. Not one.',
+    'Certified. Absolutely certified.',
+  ];
+
+  /* Most of the time the mirror agrees with him. Occasionally it does
+     not show him at all. */
+  function lookInMirror() {
+    if (Math.random() < 0.35) {
+      st.mirrorScare = 1.7;
+      SG.shake(11);
+      SG.audio.play('crash');
+      say(SG.pick(['...', 'Nope. Nope nope nope.', 'Lap. LAP.', 'That was not me.']));
+    } else {
+      st.mirrorScare = 0;
+      SG.audio.play('tap');
+      say(MIRROR_NICE);
     }
   }
 
@@ -269,6 +305,7 @@
     st.t += dt;
     if (st.bubble) { st.bubbleT += dt; if (st.bubbleT > 3) st.bubble = null; }
     if (st.flash > 0) st.flash -= dt;
+    if (st.mirrorScare > 0) st.mirrorScare -= dt;
 
     if (st.paused) { handlePauseTaps(); return; }
 
@@ -410,12 +447,30 @@
         }
         break;
 
+      // Lights out, and then the door goes.
       case 'sleep':
         o.t += dt;
-        if (o.t > 1.6) closeOverlay(true);
+        if (o.stage === 0) {
+          if (o.t > 1.5) { o.stage = 1; o.t = 0; o.line = 0; SG.audio.play('back'); SG.shake(6); }
+        } else if (o.stage === 1) {
+          if (SG.input.takeTap()) {
+            o.line++;
+            if (o.line === SLEEP_LINES.length - 1) SG.audio.play('lap');
+            else SG.audio.play('tap');
+            if (o.line >= SLEEP_LINES.length) { o.stage = 2; o.t = 0; }
+          }
+        } else {
+          if (o.t > 1.2) closeOverlay(true);
+        }
         break;
     }
   }
+
+  var SLEEP_LINES = [
+    { who: 'daley', text: 'SANTI. SANTI WAKE UP.' },
+    { who: 'daley', text: 'I clogged the toilet.' },
+    { who: 'santi', text: 'Lap.' },
+  ];
 
   var CALL_LINES = [
     { who: 'santi', text: 'Daley! Guess what I ate.' },
@@ -559,10 +614,45 @@
         SG.roundRect(g, x - 60, base - 96, 120, 30, 6); g.fill();
         g.fillStyle = '#9aa6bd';
         g.fillRect(x - 14, base - 66, 28, 66);
-        g.fillStyle = '#e6edf7';                     // mirror
-        SG.roundRect(g, x - 46, base - 220, 92, 106, 6); g.fill();
-        g.strokeStyle = '#8fa0bd'; g.lineWidth = 3;
-        SG.roundRect(g, x - 46, base - 220, 92, 106, 6); g.stroke();
+
+        var mx = x - 46, my = base - 220, mw = 92, mh = 106;
+        var scared = st.mirrorScare > 0;
+        g.fillStyle = scared ? '#0d0812' : '#e6edf7';
+        SG.roundRect(g, mx, my, mw, mh, 6); g.fill();
+
+        if (scared) {
+          // Something that is not Santi, looking back out.
+          g.save();
+          g.beginPath();
+          SG.roundRect(g, mx, my, mw, mh, 6);
+          g.clip();
+          var jitter = Math.sin(st.t * 60) * 2.5;
+          SG.art.drawHead(g, x + jitter, my + mh * 0.56, 40, 'dark', 'dark');
+          g.fillStyle = 'rgba(150,10,10,0.3)';
+          g.fillRect(mx, my, mw, mh);
+          g.fillStyle = '#ff2020';                   // eyes
+          g.beginPath();
+          g.arc(x - 13 + jitter, my + mh * 0.5, 5, 0, Math.PI * 2);
+          g.arc(x + 13 + jitter, my + mh * 0.5, 5, 0, Math.PI * 2);
+          g.fill();
+          g.restore();
+          // cracks
+          g.strokeStyle = 'rgba(255,255,255,0.6)';
+          g.lineWidth = 1.6;
+          g.beginPath();
+          g.moveTo(mx + 20, my); g.lineTo(mx + 44, my + 46); g.lineTo(mx + 26, my + mh);
+          g.moveTo(mx + 44, my + 46); g.lineTo(mx + mw, my + 30);
+          g.moveTo(mx + 44, my + 46); g.lineTo(mx + 70, my + mh);
+          g.stroke();
+        } else {
+          g.fillStyle = 'rgba(255,255,255,0.55)';    // ordinary glare
+          g.beginPath();
+          g.moveTo(mx + 12, my + mh); g.lineTo(mx + 46, my); g.lineTo(mx + 66, my); g.lineTo(mx + 32, my + mh);
+          g.closePath(); g.fill();
+        }
+        g.strokeStyle = scared ? '#8a2030' : '#8fa0bd';
+        g.lineWidth = 3;
+        SG.roundRect(g, mx, my, mw, mh, 6); g.stroke();
         break;
 
       case 'hairspray':
@@ -792,7 +882,7 @@
     g.strokeStyle = 'rgba(20,16,30,0.5)';
     g.lineWidth = 2;
     g.stroke();
-    SG.art.boxLogo(g, x, y + h * 0.56, w * 0.66, 'SANTI', kit.box);
+    SG.art.boxLogo(g, x, y + h * 0.56, w * 0.66, 'SANTI', kit.box, kit.ink);
   }
 
   function drawSanti(g, cam) {
@@ -811,6 +901,7 @@
     SG.art.drawSanti(g, x, y, SANTI_H, st.walkPhase, {
       shirt: st.shirt.shirt,
       boxColor: st.shirt.box,
+      boxInk: st.shirt.ink,
       pants: '#232a46',
       run: moving ? 1 : 0.08,
       bob: moving,
@@ -1092,11 +1183,38 @@
       }
 
       case 'sleep': {
-        g.fillStyle = 'rgba(0,0,0,' + SG.clamp(o.t / 1.6, 0, 1) + ')';
-        g.fillRect(0, 0, SG.W, SG.H);
-        SG.ui.text(g, 'ZzZ', CX, SG.H / 2, {
-          size: 40, color: 'rgba(255,255,255,' + SG.clamp(o.t, 0, 1) * 0.8 + ')', shadow: false,
-        });
+        if (o.stage === 0) {
+          g.fillStyle = 'rgba(0,0,0,' + SG.clamp(o.t / 1.5, 0, 1) * 0.9 + ')';
+          g.fillRect(0, 0, SG.W, SG.H);
+          SG.ui.text(g, 'ZzZ', CX, SG.H / 2, {
+            size: 40, color: 'rgba(255,255,255,' + SG.clamp(o.t, 0, 1) * 0.8 + ')', shadow: false,
+          });
+        } else if (o.stage === 1) {
+          g.fillStyle = 'rgba(0,0,0,0.9)';
+          g.fillRect(0, 0, SG.W, SG.H);
+          var ln = SLEEP_LINES[Math.min(o.line, SLEEP_LINES.length - 1)];
+          var isS = ln.who === 'santi';
+          var face = SG.art.faces[isS ? 'santi' : 'daley'];
+          // she bursts in, so she gets a shove of movement
+          var shove = isS ? 0 : Math.sin(st.t * 22) * 3;
+          if (face) g.drawImage(face, CX - 52 + shove, 130, 104, 104);
+          SG.ui.text(g, isS ? 'SANTI' : 'DALEY', CX, 254, {
+            size: 15, color: isS ? '#ffd400' : '#ff6b8a', shadow: false,
+          });
+          SG.ui.panel(g, CX - 230, 282, 460, 68, {
+            fill: isS ? 'rgba(255,214,80,0.14)' : 'rgba(255,107,138,0.16)', r: 12,
+            border: isS ? 'rgba(255,214,80,0.5)' : 'rgba(255,107,138,0.6)',
+          });
+          SG.ui.text(g, ln.text, CX, 316, {
+            size: 18, color: '#fff', weight: '700',
+            font: '"Avenir Next", system-ui, sans-serif', shadow: false,
+          });
+          SG.ui.text(g, 'TAP TO CONTINUE', CX, 378, { size: 12, color: 'rgba(255,255,255,0.4)', shadow: false });
+        } else {
+          g.fillStyle = '#000';
+          g.fillRect(0, 0, SG.W, SG.H);
+          SG.ui.text(g, 'ZzZ', CX, SG.H / 2, { size: 40, color: 'rgba(255,255,255,0.6)', shadow: false });
+        }
         break;
       }
     }

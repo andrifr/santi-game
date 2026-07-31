@@ -823,7 +823,8 @@
 
     // box logo across the chest
     if (o.box !== false) {
-      art.boxLogo(g, x, shoulderY + h * 0.072, bodyW * 0.72, o.boxText || 'SANTI', o.boxColor || SG.COLORS.red);
+      art.boxLogo(g, x, shoulderY + h * 0.072, bodyW * 0.72,
+                  o.boxText || 'SANTI', o.boxColor || SG.COLORS.red, o.boxInk);
     }
 
     leg(1, false);
@@ -897,8 +898,10 @@
 
   /* ---- graffiti / streetwear kit, shared across modes ---- */
 
-  // Box logo: coloured rectangle, white oblique wordmark.
-  art.boxLogo = function (g, cx, cy, w, text, color) {
+  /* Box logo: coloured rectangle, oblique wordmark.
+     `ink` is the text colour - pass it whenever the box isn't dark, or
+     the default white wordmark disappears into the box. */
+  art.boxLogo = function (g, cx, cy, w, text, color, ink) {
     var h = w * 0.36;
     g.save();
     g.fillStyle = color || SG.COLORS.red;
@@ -911,7 +914,7 @@
       g.font = '900 ' + (h * 0.72).toFixed(1) + 'px ' + SG.FONT;
       g.textAlign = 'center';
       g.textBaseline = 'middle';
-      g.fillStyle = '#fff';
+      g.fillStyle = ink || '#fff';
       g.translate(cx, cy);
       g.transform(1, 0, -0.2, 1, 0, 0);      // fake oblique
       g.fillText(text || 'SANTI', 0, h * 0.06);
