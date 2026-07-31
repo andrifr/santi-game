@@ -16,15 +16,6 @@
         'Then pick a power-up - speed, defence or attack.',
       ],
     },
-    smurf: {
-      color: '#4aa8ff',
-      lines: [
-        'Side-scrolling platformer through mushroom villages.',
-        'Stomp Gargamel\'s minions, dodge Azrael the cat.',
-        'Collect sarsaparilla, hit the flag at the end.',
-        'Boss fight: Gargamel himself.',
-      ],
-    },
   };
 
   var t = 0;
