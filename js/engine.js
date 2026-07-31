@@ -280,6 +280,11 @@
       case 'crash':   noise(0.5, { freq: 500, vol: 0.5 }); tone(180, 0.4, { type: 'sawtooth', to: 55, vol: 0.3 }); break;
       case 'power':   tone(520, 0.08, { type: 'sawtooth', vol: 0.2 }); setTimeout(function () { tone(700, 0.08, { type: 'sawtooth', vol: 0.2 }); }, 70); setTimeout(function () { tone(1040, 0.18, { type: 'sawtooth', vol: 0.22 }); }, 140); break;
       case 'record':  tone(1200, 0.05, { type: 'sine', vol: 0.15 }); break;
+      case 'pop':     tone(760, 0.055, { type: 'square', to: 520, vol: 0.2 }); break;
+      case 'smash':   tone(980, 0.09, { type: 'square', to: 380, vol: 0.28 }); noise(0.1, { freq: 2600, vol: 0.18 }); break;
+      case 'bounce':  tone(420, 0.045, { type: 'sine', to: 300, vol: 0.13 }); break;
+      case 'point':   tone(620, 0.08, { type: 'triangle', vol: 0.22 });
+                      setTimeout(function () { tone(930, 0.14, { type: 'triangle', vol: 0.22 }); }, 80); break;
       // "Lap!" - Flemish for "darn". Two-tone falling grumble.
       case 'lap':     tone(430, 0.1, { type: 'square', to: 300, vol: 0.22 });
                       setTimeout(function () { tone(250, 0.2, { type: 'sawtooth', to: 150, vol: 0.2 }); }, 95); break;

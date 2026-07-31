@@ -2,13 +2,27 @@
 
 Five games, one Santi. Browser-based, mobile-first, landscape.
 
+Live at **<https://andrifr.github.io/santi-game/>**
+
 | # | Mode | Status |
 | - | ---- | ------ |
-| 1 | Pickleball — Santi vs. Dark Santi | planned |
+| 1 | **Pickleball** — Santi vs. Dark Santi | **playable** |
 | 2 | **Chicken Wing Run** — endless runner | **playable** |
 | 3 | Brawl Showdown — draft a Santi, fight bots | planned |
 | 4 | Smurf World — platformer vs. Gargamel | planned |
 | 5 | Santi Simulator — a day in the life | planned |
+
+## Art direction
+
+Grungy, sprayed streetwear — box logos, graffiti tags, spray-can
+colours — carried across every mode. Wing Run runs through Brussels at
+dusk with the Atomium on the horizon and Grand-Place stepped gables in
+the skyline; Rue and Daley appear in lit windows as easter eggs.
+
+One rule holds everywhere: **nothing decorative goes on the playing
+surface.** Text and colour on the road or the court read as instructions
+and pull your eye off the thing you're supposed to be tracking. Graffiti
+lives on walls and billboards.
 
 ## Run it locally
 
@@ -52,6 +66,8 @@ a rotate prompt.
 
 ## Controls
 
+**Chicken Wing Run**
+
 | Action | Touch | Keyboard |
 | ------ | ----- | -------- |
 | Change lane | swipe ←/→, or tap the left/right third | ← → / A D |
@@ -60,7 +76,15 @@ a rotate prompt.
 
 Obstacles tell you what they want: red striped crates must be dodged into
 another lane, yellow hurdles jumped, blue scaffold bars slid under.
-Wings are points; the green magnet pulls them in for 8 seconds.
+Wings are points; the green magnet pulls them in for 8 seconds; the hot
+sauce gives 6 seconds of speed, invincibility and auto-collect.
+
+**Pickleball**
+
+Drag anywhere to move — your finger maps 1:1 onto the court. The swing is
+automatic; what matters is *where* the ball meets you. Centre contact
+returns it flat and fast, edge contact sends it wide and slow. First to
+7. Dark Santi gets sharper as his score climbs.
 
 ## Characters
 
@@ -79,7 +103,8 @@ css/style.css           page chrome, rotate overlay, iOS install hint
 js/engine.js            canvas/viewport, input, audio, save, art, scenes
 js/menu.js              mode select
 js/wingrun.js           mode 2 - chicken wing run
-js/stubs.js             "in development" screens for modes 1, 3, 4, 5
+js/pickleball.js        mode 1 - santi vs. dark santi
+js/stubs.js             "in development" screens for modes 3, 4, 5
 js/main.js              boot + art manifest
 tools/optimize-faces.js trims/downscales character art (node, no deps)
 tools/make-icons.js     regenerates the PWA icons (node, no deps)

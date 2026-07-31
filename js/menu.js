@@ -6,7 +6,7 @@
   var SG = window.SG;
 
   var MODES = [
-    { id: 'pickleball', scene: 'stub', n: '1', title: 'PICKLE', title2: 'BALL',    tag: 'Santi vs. Dark Santi',  color: '#4dd47a', ready: false },
+    { id: 'pickleball', scene: 'pickleball', n: '1', title: 'PICKLE', title2: 'BALL', tag: 'Santi vs. Dark Santi', color: '#4dd47a', ready: true },
     { id: 'wingrun',    scene: 'wingrun', n: '2', title: 'CHICKEN', title2: 'WING RUN', tag: 'Run. Collect. Devour.', color: '#ffb02e', ready: true },
     { id: 'brawl',      scene: 'stub', n: '3', title: 'BRAWL',  title2: 'SHOWDOWN', tag: 'Draft a Santi. Fight.', color: '#e8202a', ready: false },
     { id: 'smurf',      scene: 'stub', n: '4', title: 'SMURF',  title2: 'WORLD',    tag: 'Gargamel must fall',    color: '#4aa8ff', ready: false },

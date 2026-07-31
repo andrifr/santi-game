@@ -7,15 +7,6 @@
   var SG = window.SG;
 
   var PLANS = {
-    pickleball: {
-      color: '#4dd47a',
-      lines: [
-        'A pickleball court, top-down-ish perspective.',
-        'Santi on one side. Dark Santi on the other.',
-        'Swipe to swing, timing decides the spin.',
-        'Dark Santi trash-talks and gets faster each set.',
-      ],
-    },
     brawl: {
       color: '#e8202a',
       lines: [

@@ -575,22 +575,9 @@
     quad(g, -ROAD_HALF - 0.16, -ROAD_HALF, NEAR_Z, FAR_Z);
     quad(g, ROAD_HALF, ROAD_HALF + 0.16, NEAR_Z, FAR_Z);
 
-    // Scuffs of spray on the asphalt. Deliberately wordless - text down
-    // here reads as an instruction and pulls your eye off the lanes.
-    var period2 = 46;
-    for (var t = 0; t < 4; t++) {
-      var dz = NEAR_Z + 8 + t * period2 - (st.travel % period2);
-      if (dz <= NEAR_Z + 1 || dz >= FAR_Z * 0.55) continue;
-      var dp = proj(((t % 3) - 1) * 1.6, 0.01, dz);
-      if (dp.s < 9) continue;
-      var idx = Math.floor((st.travel / period2 + t));
-      g.save();
-      g.globalAlpha = 0.3;
-      g.translate(dp.x, dp.y);
-      g.scale(1, 0.5);                        // flatten onto the ground plane
-      SG.art.spray(g, 0, 0, dp.s * 0.85, SG.SPRAY[idx % SG.SPRAY.length], 700 + (idx % 7) * 31);
-      g.restore();
-    }
+    // Nothing decorative goes on the road surface - anything down here
+    // competes with the obstacles for your attention. Keep the graffiti
+    // on the walls where it belongs.
 
     // dashed lane dividers
     g.fillStyle = 'rgba(255,244,224,0.55)';
