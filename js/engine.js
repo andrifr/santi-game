@@ -744,7 +744,7 @@
         // body no matter how tall its hair or hat is.
         hw = r * 1.95;
         hh = hw * (head.height / head.width);
-        g.drawImage(head, cx - hw / 2, cy + r * 1.16 - hh, hw, hh);
+        g.drawImage(head, cx - hw / 2, cy + r * 1.42 - hh, hw, hh);
       } else {
         // A crop off the top of a bust: fixed width and top, height from
         // the aspect, with jaw and collar hanging over the torso.
@@ -909,17 +909,6 @@
     // neck (only visible behind the drawn placeholder face)
     g.fillStyle = SG.shade(skin, -0.12);
     g.fillRect(x - h * 0.045, headY + headR * 0.6, h * 0.09, h * 0.07);
-
-    // Contact shadow on the chest, so the head sits ON the body rather
-    // than floating at the same depth as it.
-    if (art.heads[faceKey]) {
-      g.save();
-      g.fillStyle = 'rgba(16,12,26,0.3)';
-      g.beginPath();
-      g.ellipse(x, shoulderY + h * 0.012, bodyW * 0.44, h * 0.03, 0, 0, Math.PI * 2);
-      g.fill();
-      g.restore();
-    }
 
     // Head last - nothing on the body may overlap it.
     art.drawHead(g, x, headY, headR, faceKey, variant);
