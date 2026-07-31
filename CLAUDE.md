@@ -9,8 +9,9 @@ person (Santi), his girlfriend Daley and his dog Rue. Mobile-first,
 landscape, deployed to GitHub Pages at
 <https://andrifr.github.io/santi-game/> from `main`.
 
-Four of five modes are playable — Pickleball, Chicken Wing Run, Brawl
-Showdown, Santi Simulator. Smurf World is still a stub.
+All five modes are playable — Pickleball, Chicken Wing Run, Brawl
+Showdown, Smurf World, Santi Simulator. `js/stubs.js` still registers the
+"in development" screen but nothing routes to it any more.
 
 ## Commands
 
@@ -157,6 +158,15 @@ depth — an easy and near-invisible bug.
 - **Entities can spawn inside colliders.** Push spawns clear, and let
   anything already inside move out — a collider that reverts every move
   traps it permanently.
+- **A flying enemy sits in the band a jump passes through.** In Smurf
+  World the player's head crosses y ≈ 240–370 mid-jump, so a hovering
+  enemy over a *mandatory* jump or landing platform is an unavoidable
+  hit. Fliers only patrol wide, continuous ground.
+- **An enemy faster than the player has no counterplay.** Azrael's dash
+  is capped below the run speed so he can always be outrun.
+- **After a boss takes a stomp, make him harmless for a beat.** Reverting
+  him to his walk state leaves the player inside him on the bounce, so
+  every landed hit costs a heart.
 - **Nothing decorative goes on a playing surface.** Text or colour on the
   road or the court reads as an instruction and pulls the eye off what
   the player should be tracking. Graffiti belongs on walls and
