@@ -24,6 +24,8 @@
   // in the modes still being built, so it loads after the game is up.
   // (No 'santi-mj' entry - that art loads above as 'dark'.)
   var EXTRA = [
+    // Santi Noir - the same head run through a black-and-white grade.
+    { key: 'noir',        src: F + 'santi.png', head: F + 'santi-head.png', grade: SG.art.grades.noir },
     { key: 'santi-side',  src: F + 'santi-side.png' },
     { key: 'santi-chain', src: F + 'santi-chain.png' },
     { key: 'daley',       src: F + 'daley.png' },

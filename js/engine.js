@@ -466,6 +466,16 @@
   art.grades = {
     // Evil twin: crush to luminance, push contrast hard so the features
     // survive, then tint violet. Flat tinting alone turns the face to mush.
+    // Santi Noir: black and white, contrast pushed so he still reads
+    // against a colourful arena.
+    noir: function (px) {
+      for (var i = 0; i < px.length; i += 4) {
+        var l = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+        l = SG.clamp((l - 128) * 1.3 + 126, 0, 255);
+        px[i] = px[i + 1] = px[i + 2] = l;
+      }
+    },
+
     dark: function (px) {
       for (var i = 0; i < px.length; i += 4) {
         var l = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];

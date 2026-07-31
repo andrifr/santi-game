@@ -8,7 +8,7 @@ Live at **<https://andrifr.github.io/santi-game/>**
 | - | ---- | ------ |
 | 1 | **Pickleball** — Santi vs. Dark Santi | **playable** |
 | 2 | **Chicken Wing Run** — endless runner | **playable** |
-| 3 | Brawl Showdown — draft a Santi, fight bots | planned |
+| 3 | **Brawl Showdown** — draft a Santi, fight Daleys | **playable** |
 | 4 | Smurf World — platformer vs. Gargamel | planned |
 | 5 | **Santi Simulator** — a day in the life | **playable** |
 
@@ -106,6 +106,26 @@ for. Measured: about half land for a player who never aims, essentially
 all of them for a player who does. The ball passes through rather than
 deflecting, so going for one can never cost you the rally.
 
+**Brawl Showdown**
+
+Twin stick, three-quarter view. Left thumb moves, right thumb aims and
+fires — or tap the right half to auto-aim at the nearest target, the way
+Brawl Stars does it. Keyboard: WASD.
+
+Five Daleys close in and smother Santi with hearts. Each round you draft
+which Santi you are, then one of three power-ups; the power-ups stack for
+the rest of the run, and every round adds another Daley and makes them
+tougher.
+
+| | Health | Damage | Range | Speed |
+| --- | --- | --- | --- | --- |
+| **Santi** | 110 | medium | medium | medium |
+| **Dark Santi** | 150 | three-shot spread | short | slow |
+| **Santi Noir** | 78 | heavy single shot | long | fast |
+
+Standing still gets you killed in about six seconds. Keep moving and a
+round runs 15–30.
+
 **Santi Simulator**
 
 A side-on flat you walk through: bedroom, bathroom, closet, living room,
@@ -160,7 +180,8 @@ js/menu.js              mode select
 js/wingrun.js           mode 2 - chicken wing run
 js/pickleball.js        mode 1 - santi vs. dark santi
 js/sim.js               mode 5 - santi simulator
-js/stubs.js             "in development" screens for modes 3 and 4
+js/brawl.js             mode 3 - brawl showdown
+js/stubs.js             "in development" screen for mode 4
 js/main.js              boot + art manifest
 tools/optimize-faces.js trims/downscales character art (node, no deps)
 tools/make-icons.js     regenerates the PWA icons (node, no deps)
