@@ -677,7 +677,10 @@
     if (head) {
       var hh = r * 2.18;
       var hw = hh * (head.width / head.height);
-      g.drawImage(head, cx - hw / 2, cy - hh * 0.5, hw, hh);
+      // Anchored low rather than centred, so the jaw and collar of the
+      // cutout overlap the torso instead of meeting it at a seam. The
+      // head is drawn last, so that overlap reads as "in front".
+      g.drawImage(head, cx - hw / 2, cy - hh * 0.43, hw, hh);
       return;
     }
     var face = art.faces[key];
@@ -830,10 +833,22 @@
     leg(1, false);
     arm(1, false);
 
-    // neck
+    // neck (only visible behind the drawn placeholder face)
     g.fillStyle = SG.shade(skin, -0.12);
     g.fillRect(x - h * 0.045, headY + headR * 0.6, h * 0.09, h * 0.07);
 
+    // Contact shadow on the chest, so the head sits ON the body rather
+    // than floating at the same depth as it.
+    if (art.heads[faceKey]) {
+      g.save();
+      g.fillStyle = 'rgba(16,12,26,0.3)';
+      g.beginPath();
+      g.ellipse(x, shoulderY + h * 0.012, bodyW * 0.44, h * 0.03, 0, 0, Math.PI * 2);
+      g.fill();
+      g.restore();
+    }
+
+    // Head last - nothing on the body may overlap it.
     art.drawHead(g, x, headY, headR, faceKey, variant);
   };
 
