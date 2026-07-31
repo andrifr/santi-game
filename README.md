@@ -10,7 +10,7 @@ Live at **<https://andrifr.github.io/santi-game/>**
 | 2 | **Chicken Wing Run** — endless runner | **playable** |
 | 3 | Brawl Showdown — draft a Santi, fight bots | planned |
 | 4 | Smurf World — platformer vs. Gargamel | planned |
-| 5 | Santi Simulator — a day in the life | planned |
+| 5 | **Santi Simulator** — a day in the life | **playable** |
 
 ## Art direction
 
@@ -106,6 +106,23 @@ for. Measured: about half land for a player who never aims, essentially
 all of them for a player who does. The ball passes through rather than
 deflecting, so going for one can never cost you the rally.
 
+**Santi Simulator**
+
+A side-on flat you walk through: bedroom, bathroom, closet, living room,
+kitchen, hall, and the street outside. Tap anywhere to walk there; tap an
+object to walk to it and use it. A guide arrow tracks the current task,
+with an edge marker pointing the way when the target is off screen.
+
+Thirteen steps make up one day: get up, microwave the bread and cheese,
+hairspray, pick a Supreme tee (your choice changes what he wears for the
+rest of the day), leash Rue, walk her to the tree and back, film a
+*Santi Can't* video, destroy five wings, ring Daley, go to bed. Each one
+pays 40 wings into the same jar as the other modes.
+
+Everything else in the flat is tappable too — the TV, the couch, the
+fridge, the alarm clock, the bin outside — and answers with a line
+rather than a shrug. The day is the spine, not the whole of it.
+
 ## Sound
 
 All effects are synthesized in the browser — no audio files, no load
@@ -139,7 +156,8 @@ js/engine.js            canvas/viewport, input, audio, save, art, scenes
 js/menu.js              mode select
 js/wingrun.js           mode 2 - chicken wing run
 js/pickleball.js        mode 1 - santi vs. dark santi
-js/stubs.js             "in development" screens for modes 3, 4, 5
+js/sim.js               mode 5 - santi simulator
+js/stubs.js             "in development" screens for modes 3 and 4
 js/main.js              boot + art manifest
 tools/optimize-faces.js trims/downscales character art (node, no deps)
 tools/make-icons.js     regenerates the PWA icons (node, no deps)

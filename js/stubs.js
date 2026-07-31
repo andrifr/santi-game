@@ -25,15 +25,6 @@
         'Boss fight: Gargamel himself.',
       ],
     },
-    sim: {
-      color: '#b070ff',
-      lines: [
-        'Wake up. Microwave the bread and cheese.',
-        'Hairspray. Pick a Supreme shirt. Walk Rue.',
-        'Film a YouTube video. Destroy some wings.',
-        'Call Daley. Go to sleep. Repeat forever.',
-      ],
-    },
   };
 
   var t = 0;

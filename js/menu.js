@@ -10,7 +10,7 @@
     { id: 'wingrun',    scene: 'wingrun', n: '2', title: 'CHICKEN', title2: 'WING RUN', tag: 'Run. Collect. Devour.', color: '#ffb02e', ready: true },
     { id: 'brawl',      scene: 'stub', n: '3', title: 'BRAWL',  title2: 'SHOWDOWN', tag: 'Draft a Santi. Fight.', color: '#e8202a', ready: false },
     { id: 'smurf',      scene: 'stub', n: '4', title: 'SMURF',  title2: 'WORLD',    tag: 'Gargamel must fall',    color: '#4aa8ff', ready: false },
-    { id: 'sim',        scene: 'stub', n: '5', title: 'SANTI',  title2: 'SIMULATOR', tag: 'A day in the life',    color: '#b070ff', ready: false },
+    { id: 'sim',        scene: 'sim',  n: '5', title: 'SANTI',  title2: 'SIMULATOR', tag: 'A day in the life',    color: '#b070ff', ready: true },
   ];
   SG.MODES = MODES;
 
