@@ -11,10 +11,10 @@ These are the optimised files the game actually loads. They're generated
 
 | File | Who | Used for |
 |------|-----|----------|
-| `santi.png` | Santi, head-on | the runner, menu cards; also the source for **Dark Santi** (violet grade, applied at runtime) |
-| `santi-side.png` | Santi, profile | pickleball side view |
+| `santi.png` | Santi, head-on | the runner, menu cards |
+| `santi-mj.png` | Santi as Michael Jackson | **Dark Santi** — the pickleball rival |
+| `santi-side.png` | Santi, profile | alternate skin |
 | `santi-chain.png` | Santi + a friend | alternate skin |
-| `santi-mj.png` | Santi as Michael Jackson | alternate skin |
 | `daley.png` | Daley, head-on | the phone-call task |
 | `daley-side.png` | Daley, profile | — |
 | `daley-alt.png` | Daley, alternate | — |
@@ -45,6 +45,17 @@ between a snappy first load on a phone and a bad one. No dependencies.
 
 To add a new character, drop the cutout in here, add a line to `JOBS` in
 the optimiser, and register it in `js/main.js`.
+
+## Colour grades
+
+`SG.art.grades` holds runtime recolours that preserve alpha — pass one
+as `grade:` when registering art in `js/main.js` and it's applied once
+at load. `grades.dark` (violet, high contrast) is there for generating
+evil-twin variants from any cutout.
+
+Dark Santi doesn't use it: he's the Michael Jackson art, used as drawn.
+Grading it violet flattened the fedora and hair into one purple mass and
+buried the gold aviator rims, which are the best part of the picture.
 
 ## Adding a raw photo instead
 

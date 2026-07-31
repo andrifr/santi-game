@@ -26,6 +26,8 @@
   var NEAR_Z = 0.9;          // where Santi stands
   var FAR_Z = COURT_LEN - 0.9;
   var REACH = 1.15;
+  var WINGS_PER_POINT = 100;
+  var WINGS_MATCH_BONUS = 500;
   var BALL_R = 0.11;
   // Floaty on purpose. Realistic gravity makes every shot skim the tape
   // and the rally dies on the first exchange.
@@ -55,26 +57,157 @@
       last: 0,               // who hit it last
       msg: null,
       msgT: 0,
-      shakeGrid: [],
+      wings: 0,              // chicken wings banked this match
+      eggs: [],
+      toys: [],
+      daley: null,
+      eggT: 2.5,
       winner: -1,
     };
-    buildGraffiti();
   }
 
-  // Wall art behind the far baseline. Generated once so it stays put.
-  var WALL_TAGS = ['LAP!', 'SANTI', 'DARK', 'RUE', 'HOT', 'SC'];
-  function buildGraffiti() {
-    st.shakeGrid = [];
-    for (var i = 0; i < 9; i++) {
-      st.shakeGrid.push({
-        x: SG.rand(-0.02, 1.02),
-        y: SG.rand(0.12, 0.86),
-        s: SG.rand(0.5, 1.25),
-        c: SG.pick(SG.SPRAY),
-        tag: SG.pick(WALL_TAGS),
-        box: Math.random() < 0.34,
-        seed: SG.randInt(1, 99999),
-      });
+  /* ---- Kinder surprise eggs ----
+     They float over the court as an optional target. The ball passes
+     straight through rather than deflecting - they're a bonus, never a
+     hazard that costs you the rally. */
+  var EGG_R = 0.36;
+  var EGG_WINGS = 100;
+  var TOY_KINDS = ['car', 'top', 'duck', 'ring', 'robot'];
+
+  // Placed inside the envelope a returned ball actually flies through -
+  // it peaks around the net near 2.3m and descends past it. Eggs parked
+  // above that are decorative, not targets.
+  function spawnEgg() {
+    var z = SG.rand(NET_Z + 0.2, COURT_LEN - 1.0);
+    var drop = (z - NET_Z) / (COURT_LEN - NET_Z);      // 0 at net, 1 at baseline
+    st.eggs.push({
+      x: SG.rand(-2.4, 2.4),
+      z: z,
+      y: SG.rand(1.0, 2.2) - drop * 0.45,
+      bob: Math.random() * 6.28,
+      spin: SG.rand(-0.5, 0.5),
+    });
+  }
+
+  // Closest approach of this frame's ball segment to a point. Without
+  // this a fast ball tunnels straight through an egg between frames.
+  function segDist(ax, ay, az, bx, by, bz, px, py, pz) {
+    var dx = bx - ax, dy = by - ay, dz = bz - az;
+    var len2 = dx * dx + dy * dy + dz * dz;
+    var t = len2 > 0 ? ((px - ax) * dx + (py - ay) * dy + (pz - az) * dz) / len2 : 0;
+    t = SG.clamp(t, 0, 1);
+    var cx = ax + dx * t - px, cy = ay + dy * t - py, cz = az + dz * t - pz;
+    return Math.sqrt(cx * cx + cy * cy + cz * cz);
+  }
+
+  function crackEgg(e, i) {
+    st.eggs.splice(i, 1);
+    bankWings(EGG_WINGS);
+    say('KINDER! +' + EGG_WINGS, '#ff8a1a');
+    SG.audio.play('smash');
+    SG.audio.play('wingbig');
+
+    var p = proj(e.x, e.y, e.z);
+    SG.burst(p.x, p.y, 16, { colors: ['#fff4e0', '#ff8a1a', '#ffd400'], speedMax: 220, gravity: 320 });
+
+    // shell halves tumbling apart
+    st.toys.push({
+      kind: 'shell', x: e.x, y: e.y, z: e.z,
+      vx: -1.6, vy: 2.2, vz: 0, spin: -6, rot: 0, life: 1.4,
+    });
+    st.toys.push({
+      kind: 'shell2', x: e.x, y: e.y, z: e.z,
+      vx: 1.6, vy: 1.8, vz: 0, spin: 6, rot: 0, life: 1.4,
+    });
+
+    // the prize
+    st.toys.push({
+      kind: SG.pick(TOY_KINDS), x: e.x, y: e.y, z: e.z,
+      vx: SG.rand(-0.5, 0.5), vy: 2.6, vz: 0, spin: SG.rand(-4, 4), rot: 0,
+      life: 999, prize: true, taken: false,
+    });
+  }
+
+  function updateEggs(dt, prev) {
+    if (st.phase === 'rally') {
+      st.eggT -= dt;
+      if (st.eggT <= 0 && st.eggs.length < 2) {
+        spawnEgg();
+        st.eggT = SG.rand(4, 7);
+      }
+    }
+
+    var b = st.ball;
+    for (var i = st.eggs.length - 1; i >= 0; i--) {
+      var e = st.eggs[i];
+      e.bob += dt;
+      e.y += Math.sin(e.bob * 1.6) * dt * 0.22;
+      if (b.live && segDist(prev.x, prev.y, prev.z, b.x, b.y, b.z, e.x, e.y, e.z) < EGG_R + BALL_R) {
+        crackEgg(e, i);
+      }
+    }
+
+    // toys and shell fragments
+    for (var j = st.toys.length - 1; j >= 0; j--) {
+      var t = st.toys[j];
+      t.life -= dt;
+      if (t.life <= 0) { st.toys.splice(j, 1); continue; }
+      t.rot += t.spin * dt;
+      if (t.taken) continue;                    // Daley is carrying it
+
+      t.vy -= GRAVITY * 0.55 * dt;
+      t.x += t.vx * dt;
+      t.y += t.vy * dt;
+      t.z += t.vz * dt;
+      if (t.y <= 0.12) {
+        t.y = 0.12;
+        t.vy = -t.vy * 0.35;
+        t.vx *= 0.6;
+        if (Math.abs(t.vy) < 0.4) { t.vy = 0; t.spin = 0; }
+        // once the prize settles, Daley is on her way
+        if (t.prize && !st.daley) sendDaley(t);
+      }
+    }
+
+    updateDaley(dt);
+  }
+
+  /* ---- Daley, opportunist ---- */
+  function sendDaley(toy) {
+    var from = toy.x < 0 ? -1 : 1;              // nearest sideline
+    st.daley = {
+      x: from * 5.6, z: toy.z, dir: -from, toy: toy,
+      state: 'in', t: 0, phase: 0, exit: -from * 5.6,
+    };
+  }
+
+  function updateDaley(dt) {
+    var d = st.daley;
+    if (!d) return;
+    var speed = 4.2;
+    d.phase += dt * 11;
+
+    if (d.state === 'in') {
+      var dx = d.toy.x - d.x;
+      d.x += Math.sign(dx) * Math.min(Math.abs(dx), speed * dt);
+      if (Math.abs(dx) < 0.18) { d.state = 'grab'; d.t = 0.32; }
+    } else if (d.state === 'grab') {
+      d.t -= dt;
+      if (d.t <= 0) {
+        d.state = 'out';
+        d.toy.taken = true;
+        SG.audio.play('wing');
+        say('DALEY TOOK IT', '#ff6b8a');
+      }
+    } else {
+      d.x += Math.sign(d.exit - d.x) * speed * dt;
+      d.toy.x = d.x;                             // carried
+      d.toy.y = 0.95;
+      if (Math.abs(d.x) > 5.4) {
+        var idx = st.toys.indexOf(d.toy);
+        if (idx >= 0) st.toys.splice(idx, 1);
+        st.daley = null;
+      }
     }
   }
 
@@ -122,8 +255,12 @@
     st.server = who;
 
     if (who === 0) {
-      say(reason || 'POINT SANTI', SG.COLORS.green);
+      // Wings are the currency across the whole game, so a pickleball
+      // point pays into the same jar as a run.
+      bankWings(WINGS_PER_POINT);
+      say('+' + WINGS_PER_POINT + ' WINGS', SG.COLORS.gold);
       SG.audio.play('point');
+      SG.audio.play('wing');
     } else {
       // Santi blew it. There is only one thing to say.
       say('LAP!', '#ff2d6f');
@@ -136,11 +273,20 @@
       st.winner = who;
       st.timer = 0;
       if (who === 0) {
+        bankWings(WINGS_MATCH_BONUS);
         SG.save.submit('pickleball', st.score[0] * 100 - st.score[1] * 10);
         SG.save.data.pbWins = (SG.save.data.pbWins || 0) + 1;
         SG.save.write();
       }
     }
+  }
+
+  // Banked as they're earned, not at the final whistle - quitting a
+  // match mid-way shouldn't wipe what you already won.
+  function bankWings(n) {
+    st.wings += n;
+    SG.save.data.wings = (SG.save.data.wings || 0) + n;
+    SG.save.write();
   }
 
   // ---- AI --------------------------------------------------------
@@ -233,24 +379,31 @@
     updateAi(dt);
     if (st.me.swing > 0) st.me.swing -= dt;
 
+    // Eggs, toys and Daley keep running through serves and between
+    // points - the whole gag is that play never stops for her.
+    var still = { x: st.ball.x, y: st.ball.y, z: st.ball.z };
+
     if (st.phase === 'serve') {
       st.timer -= dt;
       // ball stays in the server's hand until it goes
       st.ball.x = (st.server === 0 ? st.me.x + 0.62 : st.ai.x - 0.62);
+      updateEggs(dt, still);
       if (st.timer <= 0) launchServe();
       return;
     }
 
     if (st.phase === 'point') {
       st.timer -= dt;
+      updateEggs(dt, still);
       if (st.timer <= 0) beginServe();
       return;
     }
 
     // ---- ball ----
     var b = st.ball;
-    if (!b.live) return;
+    if (!b.live) { updateEggs(dt, still); return; }
     var prevZ = b.z;
+    var prev = { x: b.x, y: b.y, z: b.z };
 
     b.vy -= GRAVITY * dt;
     b.x += b.vx * dt;
@@ -259,6 +412,9 @@
 
     st.trail.push({ x: b.x, y: b.y, z: b.z });
     if (st.trail.length > 12) st.trail.shift();
+
+    // Before the collision checks below, several of which return early.
+    updateEggs(dt, prev);
 
     // bounce
     if (b.y <= BALL_R && b.vy < 0) {
@@ -331,31 +487,16 @@
     g.fillStyle = sky;
     g.fillRect(0, 0, SG.W, SG.H);
 
-    // graffiti wall behind the court
+    // Plain back wall. Deliberately quiet - anything busy up here sits
+    // directly behind the ball for most of a rally.
     var wallTop = 8, wallBot = proj(0, 0, COURT_LEN + 2.2).y;
-    g.fillStyle = '#2b2350';
+    var wg = g.createLinearGradient(0, wallTop, 0, wallBot);
+    wg.addColorStop(0, '#241d44');
+    wg.addColorStop(1, '#2f2755');
+    g.fillStyle = wg;
     g.fillRect(0, wallTop, SG.W, wallBot - wallTop);
     g.fillStyle = 'rgba(0,0,0,0.22)';
     g.fillRect(0, wallTop, SG.W, 16);
-
-    // Held back to ~55% - at full strength the wall art and the ball
-    // fight each other and you lose track of the ball mid-rally.
-    g.save();
-    g.beginPath();
-    g.rect(0, wallTop, SG.W, wallBot - wallTop);
-    g.clip();
-    g.globalAlpha = 0.55;
-    for (var i = 0; i < st.shakeGrid.length; i++) {
-      var w = st.shakeGrid[i];
-      var wx = w.x * SG.W, wy = wallTop + w.y * (wallBot - wallTop);
-      SG.art.spray(g, wx, wy, 46 * w.s, w.c, w.seed);
-      if (w.box) SG.art.boxLogo(g, wx, wy, 92 * w.s, 'SANTI', w.c);
-      else SG.art.tag(g, w.tag, wx, wy, 30 * w.s, w.c, -0.05);
-    }
-    g.globalAlpha = 1;
-    g.restore();
-    g.fillStyle = 'rgba(14,9,32,0.4)';           // haze it back further
-    g.fillRect(0, wallTop, SG.W, wallBot - wallTop);
 
     // chain-link fence over the wall
     g.save();
@@ -506,6 +647,140 @@
     g.fill();
   }
 
+  /* ---- eggs, toys, Daley ---- */
+
+  function drawEgg(g, e) {
+    var p = proj(e.x, e.y, e.z);
+    var r = p.s * EGG_R;
+    if (r < 2) return;
+
+    // glow so it reads as a target
+    g.fillStyle = 'rgba(255,180,60,0.16)';
+    g.beginPath();
+    g.arc(p.x, p.y, r * 1.9, 0, Math.PI * 2);
+    g.fill();
+
+    g.save();
+    g.translate(p.x, p.y);
+    g.rotate(Math.sin(e.bob) * 0.14);
+    g.scale(r / 30, r / 30);
+
+    g.strokeStyle = '#3a2412';
+    g.lineWidth = 2.4;
+    // bottom half - cream
+    g.fillStyle = '#fdf3e0';
+    g.beginPath();
+    g.ellipse(0, 0, 22, 30, 0, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+    // top half - the orange wrapper
+    g.save();
+    g.beginPath();
+    g.rect(-24, -32, 48, 26);
+    g.clip();
+    g.fillStyle = '#e8582a';
+    g.beginPath();
+    g.ellipse(0, 0, 22, 30, 0, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+    g.beginPath();
+    g.ellipse(0, 0, 22, 30, 0, 0, Math.PI * 2);
+    g.stroke();
+    // white swoosh across the middle
+    g.fillStyle = '#fff';
+    g.beginPath();
+    g.ellipse(0, -5, 20, 5.5, -0.12, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.5)';
+    g.beginPath();
+    g.ellipse(-7, -16, 5, 8, -0.4, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+  }
+
+  function drawToy(g, t) {
+    var p = proj(t.x, t.y, t.z);
+    var r = p.s * 0.13;
+    if (r < 1.5) return;
+    g.save();
+    g.translate(p.x, p.y);
+    g.rotate(t.rot);
+    g.scale(r / 10, r / 10);
+    g.strokeStyle = '#3a2412';
+    g.lineWidth = 1.6;
+
+    if (t.kind === 'shell' || t.kind === 'shell2') {
+      g.fillStyle = t.kind === 'shell' ? '#e8582a' : '#fdf3e0';
+      g.beginPath();
+      g.arc(0, 0, 8, 0, Math.PI);
+      g.closePath();
+      g.fill(); g.stroke();
+    } else if (t.kind === 'car') {
+      g.fillStyle = '#ff2d6f';
+      SG.roundRect(g, -9, -3, 18, 7, 2); g.fill(); g.stroke();
+      g.fillStyle = '#ffd400';
+      SG.roundRect(g, -4, -8, 9, 6, 2); g.fill(); g.stroke();
+      g.fillStyle = '#2a2340';
+      g.beginPath(); g.arc(-5, 5, 3, 0, Math.PI * 2); g.arc(5, 5, 3, 0, Math.PI * 2); g.fill();
+    } else if (t.kind === 'top') {
+      g.fillStyle = '#4dd47a';
+      g.beginPath(); g.moveTo(-9, -3); g.lineTo(9, -3); g.lineTo(0, 9); g.closePath();
+      g.fill(); g.stroke();
+      g.fillStyle = '#ffd400';
+      SG.roundRect(g, -2, -9, 4, 6, 1.5); g.fill(); g.stroke();
+    } else if (t.kind === 'duck') {
+      g.fillStyle = '#ffd400';
+      g.beginPath(); g.ellipse(0, 2, 9, 7, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+      g.beginPath(); g.arc(6, -5, 5, 0, Math.PI * 2); g.fill(); g.stroke();
+      g.fillStyle = '#ff7a1a';
+      g.beginPath(); g.moveTo(10, -5); g.lineTo(15, -3); g.lineTo(10, -1); g.closePath(); g.fill();
+    } else if (t.kind === 'ring') {
+      g.strokeStyle = '#00e5ff';
+      g.lineWidth = 4;
+      g.beginPath(); g.arc(0, 0, 8, 0, Math.PI * 2); g.stroke();
+      g.fillStyle = '#ff2d6f';
+      g.beginPath(); g.arc(0, -8, 3.4, 0, Math.PI * 2); g.fill();
+    } else {
+      g.fillStyle = '#7c4dff';                 // robot
+      SG.roundRect(g, -6, -4, 12, 12, 2); g.fill(); g.stroke();
+      SG.roundRect(g, -5, -11, 10, 8, 2); g.fill(); g.stroke();
+      g.fillStyle = '#e9f562';
+      g.fillRect(-3, -9, 2.4, 2.4);
+      g.fillRect(1, -9, 2.4, 2.4);
+    }
+    g.restore();
+  }
+
+  function drawDaley(g) {
+    var d = st.daley;
+    if (!d) return;
+    var p = proj(d.x, 0, d.z);
+    var h = 1.75 * p.s * 1.1;
+    shadow(g, p, h);
+    SG.art.drawSanti(g, p.x, p.y, h, d.phase, {
+      face: 'daley', shirt: '#1e63c8', boxColor: '#ffd400', pants: '#20263f',
+      run: d.state === 'grab' ? 0.15 : 1,
+    });
+    if (d.state === 'grab') {
+      SG.ui.text(g, 'MINE', p.x, p.y - h * 1.05, {
+        size: Math.max(9, h * 0.13), color: '#ffd400', stroke: '#1a1030', strokeWidth: 3, shadow: false,
+      });
+    }
+  }
+
+  // Everything that lives out on the court, split by side so it sorts
+  // correctly against the net.
+  function drawExtras(g, farSide) {
+    var i;
+    for (i = 0; i < st.eggs.length; i++) {
+      if ((st.eggs[i].z > NET_Z) === farSide) drawEgg(g, st.eggs[i]);
+    }
+    for (i = 0; i < st.toys.length; i++) {
+      if ((st.toys[i].z > NET_Z) === farSide) drawToy(g, st.toys[i]);
+    }
+    if (st.daley && (st.daley.z > NET_Z) === farSide) drawDaley(g);
+  }
+
   function shadow(g, p, h) {
     g.fillStyle = 'rgba(0,0,0,0.3)';
     g.beginPath();
@@ -527,8 +802,14 @@
     SG.ui.text(g, String(st.score[1]), bx + bw - 74, 31, { size: 28, color: '#ff6b8a', shadow: false });
     SG.ui.text(g, 'FIRST TO ' + WIN_SCORE, CX, 64, { size: 10, color: 'rgba(255,255,255,0.35)', shadow: false });
 
+    // wings banked this match
+    SG.art.drawWing(g, 32, 30, 1.1, -0.3);
+    SG.ui.text(g, String(st.wings), 52, 30, {
+      size: 22, color: SG.COLORS.gold, align: 'left', stroke: '#1a1030', strokeWidth: 5, shadow: false,
+    });
+
     if (st.rally > 2 && st.phase === 'rally') {
-      SG.ui.text(g, 'RALLY ' + st.rally, 24, 30, { size: 16, color: SG.COLORS.gold, align: 'left', shadow: false });
+      SG.ui.text(g, 'RALLY ' + st.rally, 24, 58, { size: 15, color: 'rgba(255,255,255,0.6)', align: 'left', shadow: false });
     }
 
     if (st.msg) {
@@ -586,9 +867,15 @@
     var face = SG.art.faces[won ? 'santi' : 'dark'];
     if (face) g.drawImage(face, CX - 42, 184, 84, 84);
 
-    SG.ui.text(g, st.score[0] + ' - ' + st.score[1], CX, 292, { size: 34, color: '#fff', shadow: false });
+    SG.ui.text(g, st.score[0] + ' - ' + st.score[1], CX, 286, { size: 32, color: '#fff', shadow: false });
+
+    SG.art.drawWing(g, CX - 56, 314, 1.15, -0.3);
+    SG.ui.text(g, '+' + st.wings + ' wings', CX - 36, 314, {
+      size: 17, color: SG.COLORS.gold, align: 'left', shadow: false,
+    });
+
     SG.ui.text(g, won ? 'Dark Santi retreats into the shadows' : 'Dark Santi is insufferable about it',
-      CX, 324, { size: 13, color: 'rgba(255,255,255,0.45)', shadow: false });
+      CX, 336, { size: 13, color: 'rgba(255,255,255,0.45)', shadow: false });
 
     if (SG.ui.button(g, { x: CX - 190, y: 350, w: 180, h: 52 }, 'REMATCH', { color: SG.COLORS.gold })) reset();
     if (SG.ui.button(g, { x: CX + 10, y: 350, w: 180, h: 52 }, 'MENU', { color: '#3a4270', text: '#fff' })) SG.go('menu');
@@ -603,7 +890,9 @@
     var ballBehindNet = st.ball.z > NET_Z;
     if (ballBehindNet) drawBall(g);
     drawPlayersFar(g);
+    drawExtras(g, true);
     drawNet(g);
+    drawExtras(g, false);
     if (!ballBehindNet) drawBall(g);
     drawPlayersNear(g);
 
@@ -616,11 +905,13 @@
     var fp = proj(st.ai.x, 0, FAR_Z);
     var fh = 1.75 * fp.s * 1.15;
     shadow(g, fp, fh);
+    // Dressed to match the art: black fit, gold box logo picking up the
+    // aviator rims, white shoes.
     SG.art.drawSanti(g, fp.x, fp.y, fh, st.t * 5, {
-      face: 'dark', shirt: '#2b1650', boxColor: '#ff2d6f', pants: '#150c24',
-      shoe: '#2a2340', run: Math.abs(st.ai.tx - st.ai.x) > 0.05 ? 1 : 0.12,
+      face: 'dark', shirt: '#17131f', boxColor: '#ffd400', pants: '#12101a',
+      shoe: '#f0f0f4', run: Math.abs(st.ai.tx - st.ai.x) > 0.05 ? 1 : 0.12,
     });
-    drawPaddle(g, st.ai.x, FAR_Z, st.ai.swing, -1, '#ff2d6f');
+    drawPaddle(g, st.ai.x, FAR_Z, st.ai.swing, -1, '#c9ccd8');
   }
 
   function drawPlayersNear(g) {

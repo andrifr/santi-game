@@ -28,9 +28,6 @@
     sauce: '#d9501f',
   };
 
-  // Spray-can palette - the graffiti running through every mode.
-  SG.SPRAY = ['#ff2d6f', '#ffd400', '#00e5ff', '#7c4dff', '#4dd47a', '#ff7a1a'];
-
   // ---------------------------------------------------------------
   // Utilities
   // ---------------------------------------------------------------
@@ -875,31 +872,7 @@
     g.restore();
   };
 
-  // Deterministic little PRNG so scenery doesn't shimmer between frames.
-  SG.seeded = function (seed) {
-    var s = (seed | 0) || 1;
-    return function () {
-      s = (s * 16807) % 2147483647;
-      return s / 2147483647;
-    };
-  };
-
-  // Spray-paint splat.
-  art.spray = function (g, x, y, r, color, seed) {
-    var rnd = SG.seeded(seed);
-    g.save();
-    g.fillStyle = color;
-    for (var i = 0; i < 16; i++) {
-      var a = rnd() * 6.283, d = rnd() * r;
-      g.globalAlpha = 0.12 + rnd() * 0.28;
-      g.beginPath();
-      g.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, r * (0.1 + rnd() * 0.32), 0, Math.PI * 2);
-      g.fill();
-    }
-    g.restore();
-  };
-
-  // Graffiti tag - slanted wordmark with a fat outline.
+  // Slanted wordmark with a fat outline, for headlines like "LAP!".
   art.tag = function (g, text, x, y, size, color, angle) {
     g.save();
     g.translate(x, y);

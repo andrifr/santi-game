@@ -72,9 +72,8 @@
   }
 
   // ---- side scenery ---------------------------------------------
-  // Washed-out brick and concrete, so the sprayed-on colour pops.
   var PROP_COLORS = ['#3b3157', '#4a3a5e', '#2e3560', '#573a54', '#3d4a5e', '#5c4438'];
-  var TAGS = ['LAP!', 'SANTI', 'RUE', 'WINGS', 'HOT', 'SC', 'DALEY'];
+  var SIGN_COLORS = ['#ffb02e', '#ff5a3d', '#4dd47a', '#4aa8ff'];
 
   function spawnProp(z) {
     var side = Math.random() < 0.5 ? -1 : 1;
@@ -97,10 +96,7 @@
       c: SG.pick(PROP_COLORS),
       lit: Math.random() < 0.7,
       seed: SG.randInt(1, 100000),
-      tag: Math.random() < 0.55 ? SG.pick(TAGS) : null,
-      tagColor: SG.pick(SG.SPRAY),
-      box: Math.random() < 0.3,
-      boxColor: SG.pick(SG.SPRAY),
+      accent: SG.pick(SIGN_COLORS),
       peek: peek,
     });
   }
@@ -283,12 +279,28 @@
     if (st.magnet > 0) st.magnet -= dt;
     if (st.invuln > 0) st.invuln -= dt;
     if (st.sauce > 0) {
+      var was = st.sauce;
       st.sauce -= dt;
-      // flame trail
+
+      // Warn before it drops, so you don't run into a crate still
+      // believing you're invincible.
+      if (was > 2 && st.sauce <= 2) {
+        popup('SAUCE RUNNING OUT!', SG.COLORS.sauce);
+        SG.audio.play('back');
+      }
+      if (st.sauce <= 0) {
+        popup('SAUCE GONE', '#ff6b5c');
+        SG.audio.play('lap');
+        SG.shake(4);
+      }
+
+      // Flame trail thins out and cools as it expires.
+      var fade = SG.clamp(st.sauce / 2, 0, 1);
       var fp = proj(st.laneX, 0.5, PLAYER_Z);
-      SG.burst(fp.x, fp.y, 2, {
-        colors: ['#ff2d0a', '#ff8a1a', '#ffd400'], angle: Math.PI / 2,
-        speedMin: 30, speedMax: 130, gravity: -260, rMax: 7, life: 0.45,
+      SG.burst(fp.x, fp.y, st.sauce > 2 ? 2 : 1, {
+        colors: st.sauce > 2 ? ['#ff2d0a', '#ff8a1a', '#ffd400'] : ['#8a6a5a', '#c08a5a'],
+        angle: Math.PI / 2, speedMin: 30, speedMax: 60 + 70 * fade,
+        gravity: -260, rMax: 3 + 4 * fade, life: 0.45,
       });
     }
 
@@ -453,14 +465,14 @@
     g.beginPath();
     g.arc(sunX, sunY, 38, 0, Math.PI * 2);
     g.fill();
-    SG.art.spray(g, sunX, sunY, 62, '#ffd400', 4242);
 
-    // paint clouds
+    // clouds
     var drift = st.travel * 0.35;
     for (var c = 0; c < 5; c++) {
       var cx = ((c * 317 - drift) % (SG.W + 300)) - 150;
       if (cx < -160) cx += SG.W + 300;
-      SG.art.spray(g, cx, 40 + (c % 3) * 34, 46, SG.SPRAY[c % SG.SPRAY.length], 900 + c * 77);
+      g.fillStyle = 'rgba(255,255,255,' + (0.05 + (c % 3) * 0.02) + ')';
+      puff(g, cx, 40 + (c % 3) * 34, 44);
     }
 
     // the Atomium, parked on the horizon
@@ -469,6 +481,14 @@
     // parallax skyline of stepped-gable guildhouses
     var off = (st.travel * 1.4) % 260;
     for (var i = -1; i < 7; i++) guildRow(g, i * 260 - off);
+  }
+
+  function puff(g, x, y, r) {
+    g.beginPath();
+    g.arc(x - r * 0.6, y + r * 0.1, r * 0.55, 0, Math.PI * 2);
+    g.arc(x, y - r * 0.15, r * 0.75, 0, Math.PI * 2);
+    g.arc(x + r * 0.65, y + r * 0.05, r * 0.5, 0, Math.PI * 2);
+    g.fill();
   }
 
   // Nine spheres on a cube standing on its vertex.
@@ -632,12 +652,12 @@
         g.fillStyle = '#14102a';
         SG.roundRect(g, base.x - bw / 2, top.y - bh * 0.5, bw, bh, bw * 0.05);
         g.fill();
-        g.strokeStyle = p.tagColor;
+        g.strokeStyle = p.accent;
         g.lineWidth = Math.max(1, bw * 0.03);
         g.stroke();
         if (bw > 26) {
           SG.ui.text(g, 'SANTI', base.x, top.y - bh * 0.16, { size: bw * 0.2, color: '#fff', shadow: false });
-          SG.ui.text(g, "CAN'T", base.x, top.y + bh * 0.16, { size: bw * 0.2, color: p.tagColor, shadow: false });
+          SG.ui.text(g, "CAN'T", base.x, top.y + bh * 0.16, { size: bw * 0.2, color: p.accent, shadow: false });
         }
       } else {
         var bh2 = base.y - top.y;
@@ -658,20 +678,12 @@
           }
         }
 
-        // graffiti sprayed across the lower façade
+        // roofline trim, just enough to break up the flat façade
         if (halfW > 5) {
-          g.save();
-          g.beginPath();
-          g.rect(base.x - halfW, top.y, halfW * 2, bh2);
-          g.clip();
-          SG.art.spray(g, base.x + halfW * 0.1, base.y - bh2 * 0.16, halfW * 0.9, p.tagColor, p.seed);
-          if (p.tag && halfW > 11) {
-            SG.art.tag(g, p.tag, base.x, base.y - bh2 * 0.17, halfW * 0.5, p.tagColor, -0.06);
-          }
-          if (p.box && halfW > 9) {
-            SG.art.boxLogo(g, base.x, top.y + bh2 * 0.2, halfW * 1.15, 'SANTI', p.boxColor);
-          }
-          g.restore();
+          g.fillStyle = 'rgba(255,255,255,0.07)';
+          g.fillRect(base.x - halfW, top.y, halfW * 2, Math.max(1, halfW * 0.12));
+          g.fillStyle = 'rgba(0,0,0,0.3)';
+          g.fillRect(base.x - halfW, base.y - Math.max(1, halfW * 0.16), halfW * 2, Math.max(1, halfW * 0.16));
         }
 
         // easter egg: Rue or Daley at a window
@@ -885,10 +897,13 @@
     g.ellipse(ground.x, ground.y, h * 0.24 * (1 - airT * 0.35), h * 0.075 * (1 - airT * 0.35), 0, 0, Math.PI * 2);
     g.fill();
 
-    // hot-sauce aura
+    // Hot-sauce aura. Under 2s it flashes hard and dims - the same
+    // "about to expire" language as the HUD bar.
     if (st.sauce > 0) {
+      var ending = st.sauce <= 2;
+      var blink = ending ? (0.16 + Math.abs(Math.sin(st.t * 16)) * 0.34) : (0.3 + Math.sin(st.t * 18) * 0.1);
       var ag = g.createRadialGradient(ground.x, ground.y - h * 0.42, h * 0.08, ground.x, ground.y - h * 0.42, h * 0.62);
-      ag.addColorStop(0, 'rgba(255,120,20,' + (0.3 + Math.sin(st.t * 18) * 0.1) + ')');
+      ag.addColorStop(0, 'rgba(255,120,20,' + blink + ')');
       ag.addColorStop(1, 'rgba(255,60,10,0)');
       g.fillStyle = ag;
       g.fillRect(ground.x - h * 0.7, ground.y - h * 1.1, h * 1.4, h * 1.4);
@@ -951,8 +966,8 @@
 
     // power-up timers
     var bar = 0;
-    if (st.sauce > 0) { powerBar(g, bar++, st.sauce / 6, SG.COLORS.sauce, 'HOT SAUCE'); }
-    if (st.magnet > 0) { powerBar(g, bar++, st.magnet / 8, '#4dd47a', 'MAGNET'); }
+    if (st.sauce > 0) { powerBar(g, bar++, st.sauce / 6, SG.COLORS.sauce, 'HOT SAUCE', st.sauce); }
+    if (st.magnet > 0) { powerBar(g, bar++, st.magnet / 8, '#4dd47a', 'MAGNET', st.magnet); }
 
     // popups
     for (var i = 0; i < st.popups.length; i++) {
@@ -976,15 +991,30 @@
     }
   }
 
-  function powerBar(g, slot, frac, color, label) {
+  function powerBar(g, slot, frac, color, label, secsLeft) {
     var y = 22 + slot * 30;
+    var ending = secsLeft !== undefined && secsLeft <= 2;
+    // Flash the whole bar once it's nearly out - a slowly shrinking bar
+    // is far too easy to miss while you're watching the road.
+    var flash = ending && Math.floor(st.t * 8) % 2 === 0;
+
     g.fillStyle = 'rgba(0,0,0,0.45)';
     SG.roundRect(g, CX - 75, y, 150, 12, 6);
     g.fill();
-    g.fillStyle = color;
+    g.fillStyle = flash ? '#fff4e0' : color;
     SG.roundRect(g, CX - 75, y, 150 * SG.clamp(frac, 0, 1), 12, 6);
     g.fill();
-    SG.ui.text(g, label, CX, y + 20, { size: 11, color: color, shadow: false });
+
+    if (ending) {
+      g.strokeStyle = flash ? '#fff4e0' : color;
+      g.lineWidth = 2;
+      SG.roundRect(g, CX - 77, y - 2, 154, 16, 8);
+      g.stroke();
+    }
+
+    SG.ui.text(g, ending ? label + '  ' + secsLeft.toFixed(1) + 's' : label, CX, y + 20, {
+      size: 11, color: flash ? '#fff4e0' : color, shadow: false,
+    });
   }
 
   function drawReady(g) {

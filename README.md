@@ -86,12 +86,22 @@ automatic; what matters is *where* the ball meets you. Centre contact
 returns it flat and fast, edge contact sends it wide and slow. First to
 7. Dark Santi gets sharper as his score climbs.
 
+Every point won pays **100 chicken wings** into the same jar Wing Run
+fills, plus a 500 bonus for taking the match.
+
+**Kinder eggs.** One or two float over the far court at a time. Hit one
+with the ball and it cracks in mid-air for a **100-wing bonus** — shell
+halves tumble out and a random toy drops to the court. Then Daley
+sprints on, grabs the toy and runs off with it. Play never stops for
+her. The ball passes straight through an egg rather than deflecting, so
+going for one can never cost you the rally.
+
 ## Characters
 
 `assets/faces/` holds transparent cutouts of Santi, Daley and Rue. The
 game crops the head out of a portrait and draws it on an animated body,
-so one image yields a full run cycle. Dark Santi is generated at runtime
-by grading Santi's own cutout violet.
+so one image yields a full run cycle. **Dark Santi** is the Michael
+Jackson portrait — fedora, gold aviators, black fit.
 
 See `assets/faces/README.md` for how to add or regenerate art.
 
