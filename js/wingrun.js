@@ -55,6 +55,7 @@
       slide: 0,
       runPhase: 0,
       magnet: 0,
+      sauce: 0,
       invuln: 0,
       ents: [],
       props: [],
@@ -71,20 +72,36 @@
   }
 
   // ---- side scenery ---------------------------------------------
-  var PROP_COLORS = ['#2f2b52', '#3a2f5e', '#26315c', '#43305c'];
+  // Washed-out brick and concrete, so the sprayed-on colour pops.
+  var PROP_COLORS = ['#3b3157', '#4a3a5e', '#2e3560', '#573a54', '#3d4a5e', '#5c4438'];
+  var TAGS = ['LAP!', 'SANTI', 'RUE', 'WINGS', 'HOT', 'SC', 'DALEY'];
 
   function spawnProp(z) {
     var side = Math.random() < 0.5 ? -1 : 1;
     var kind = Math.random();
+    var type = kind < 0.62 ? 'building' : kind < 0.82 ? 'tree' : 'billboard';
+
+    // Rue and Daley turn up in windows now and then.
+    var peek = null;
+    if (type === 'building' && Math.random() < 0.22) {
+      peek = Math.random() < 0.5 ? 'rue' : 'daley';
+    }
+
     st.props.push({
       side: side,
       z: z,
-      type: kind < 0.55 ? 'building' : kind < 0.8 ? 'tree' : 'sign',
-      h: SG.rand(3.5, 9),
-      w: SG.rand(1.6, 3.2),
+      type: type,
+      h: type === 'building' ? SG.rand(4.5, 10) : SG.rand(3.5, 6),
+      w: SG.rand(1.8, 3.4),
       off: SG.rand(4.4, 7.5),
       c: SG.pick(PROP_COLORS),
-      lit: Math.random() < 0.6,
+      lit: Math.random() < 0.7,
+      seed: SG.randInt(1, 100000),
+      tag: Math.random() < 0.55 ? SG.pick(TAGS) : null,
+      tagColor: SG.pick(SG.SPRAY),
+      box: Math.random() < 0.3,
+      boxColor: SG.pick(SG.SPRAY),
+      peek: peek,
     });
   }
 
@@ -162,8 +179,11 @@
     else pool = PATTERNS;
     SG.pick(pool)(z);
 
-    if (Math.random() < 0.09) {
+    if (Math.random() < 0.08) {
       st.ents.push({ type: 'magnet', lane: SG.randInt(0, 2), z: z + SG.rand(10, 20), wy: 1.1, gone: false, pz: 0, rot: 0 });
+    }
+    if (st.travel > 260 && Math.random() < 0.07) {
+      st.ents.push({ type: 'sauce', lane: SG.randInt(0, 2), z: z + SG.rand(8, 22), wy: 1.1, gone: false, pz: 0, rot: 0 });
     }
   }
 
@@ -182,6 +202,7 @@
     st.phase = 'dead';
     st.deadT = 0;
     SG.audio.play('crash');
+    setTimeout(function () { SG.audio.play('lap'); }, 260);   // "Lap!"
     SG.shake(16);
     var p = proj(st.laneX, st.y + 0.8, PLAYER_Z);
     SG.burst(p.x, p.y, 26, { colors: ['#ff6b3d', '#ffb02e', '#fff4e0'], speedMax: 420, lift: 120 });
@@ -229,7 +250,7 @@
     handleControls();
 
     // ---- speed / distance ----
-    st.speed = Math.min(SPEED_MAX, SPEED_START + st.travel * 0.012);
+    st.speed = Math.min(SPEED_MAX, SPEED_START + st.travel * 0.012) * (st.sauce > 0 ? 1.3 : 1);
     st.travel += st.speed * dt;
     st.score = Math.floor(st.travel * 2) + st.wings * 15;
 
@@ -261,6 +282,15 @@
     st.runPhase += dt * (7 + st.speed * 0.32);
     if (st.magnet > 0) st.magnet -= dt;
     if (st.invuln > 0) st.invuln -= dt;
+    if (st.sauce > 0) {
+      st.sauce -= dt;
+      // flame trail
+      var fp = proj(st.laneX, 0.5, PLAYER_Z);
+      SG.burst(fp.x, fp.y, 2, {
+        colors: ['#ff2d0a', '#ff8a1a', '#ffd400'], angle: Math.PI / 2,
+        speedMin: 30, speedMax: 130, gravity: -260, rMax: 7, life: 0.45,
+      });
+    }
 
     // ---- spawning ----
     st.distToSpawn -= st.speed * dt;
@@ -337,11 +367,11 @@
     var sameLane = en.lane === null || en.lane === st.lane;
 
     if (en.type === 'wing') {
-      var grab = sameLane || st.magnet > 0;
+      var grab = sameLane || st.magnet > 0 || st.sauce > 0;
       if (grab) {
         // must be roughly at the wing's height
         var dy = Math.abs((st.y + 0.85) - en.wy);
-        if (st.magnet > 0 || dy < 1.25) {
+        if (st.magnet > 0 || st.sauce > 0 || dy < 1.25) {
           en.gone = true;
           st.wings++;
           st.streak++;
@@ -370,6 +400,20 @@
       return;
     }
 
+    if (en.type === 'sauce') {
+      if (sameLane || Math.abs(LANE_X[st.lane] - LANE_X[en.lane]) < 2) {
+        en.gone = true;
+        st.sauce = 6;
+        st.invuln = 6;
+        SG.audio.play('sauce');
+        popup('HOT SAUCE!', SG.COLORS.sauce);
+        SG.shake(7);
+        var hp = proj(LANE_X[en.lane], en.wy, PLAYER_Z);
+        SG.burst(hp.x, hp.y, 24, { colors: ['#ff2d0a', '#ff8a1a', '#ffd400'], speedMax: 300, gravity: 120 });
+      }
+      return;
+    }
+
     if (!sameLane || st.invuln > 0) return;
 
     if (en.type === 'hurdle') {
@@ -386,45 +430,118 @@
   }
 
   // ---- drawing ---------------------------------------------------
+  /* ---- Brussels at dusk, sprayed over ---- */
+
   function drawSky(g) {
     var sky = g.createLinearGradient(0, 0, 0, HORIZON + 60);
-    sky.addColorStop(0, '#20134a');
-    sky.addColorStop(0.55, '#5a2360');
-    sky.addColorStop(1, '#ff7a4d');
+    sky.addColorStop(0, '#180b3a');
+    sky.addColorStop(0.4, '#5b1a63');
+    sky.addColorStop(0.72, '#c22a5a');
+    sky.addColorStop(1, '#ff8a2b');
     g.fillStyle = sky;
     g.fillRect(0, 0, SG.W, HORIZON + 60);
 
-    // sun
-    var sunX = CX + 150;
-    var sunY = HORIZON - 46;
-    var sg = g.createRadialGradient(sunX, sunY, 8, sunX, sunY, 130);
-    sg.addColorStop(0, 'rgba(255,220,120,0.95)');
-    sg.addColorStop(0.35, 'rgba(255,150,60,0.55)');
-    sg.addColorStop(1, 'rgba(255,120,60,0)');
+    // sun, sprayed rather than drawn
+    var sunX = CX + 150, sunY = HORIZON - 52;
+    var sg = g.createRadialGradient(sunX, sunY, 8, sunX, sunY, 140);
+    sg.addColorStop(0, 'rgba(255,225,120,0.95)');
+    sg.addColorStop(0.35, 'rgba(255,120,40,0.5)');
+    sg.addColorStop(1, 'rgba(255,90,40,0)');
     g.fillStyle = sg;
+    g.fillRect(sunX - 150, sunY - 150, 300, 300);
+    g.fillStyle = '#ffd85c';
     g.beginPath();
-    g.arc(sunX, sunY, 130, 0, Math.PI * 2);
+    g.arc(sunX, sunY, 38, 0, Math.PI * 2);
     g.fill();
-    g.fillStyle = '#ffd36b';
-    g.beginPath();
-    g.arc(sunX, sunY, 40, 0, Math.PI * 2);
-    g.fill();
+    SG.art.spray(g, sunX, sunY, 62, '#ffd400', 4242);
 
-    // parallax skyline
-    var off = (st.travel * 1.4) % 240;
-    g.fillStyle = 'rgba(18,10,38,0.85)';
-    for (var i = -1; i < 6; i++) {
-      var bx = i * 240 - off;
-      silhouette(g, bx);
+    // paint clouds
+    var drift = st.travel * 0.35;
+    for (var c = 0; c < 5; c++) {
+      var cx = ((c * 317 - drift) % (SG.W + 300)) - 150;
+      if (cx < -160) cx += SG.W + 300;
+      SG.art.spray(g, cx, 40 + (c % 3) * 34, 46, SG.SPRAY[c % SG.SPRAY.length], 900 + c * 77);
+    }
+
+    // the Atomium, parked on the horizon
+    drawAtomium(g, CX - 268 - (st.travel * 0.5) % 40, HORIZON - 96, 15);
+
+    // parallax skyline of stepped-gable guildhouses
+    var off = (st.travel * 1.4) % 260;
+    for (var i = -1; i < 7; i++) guildRow(g, i * 260 - off);
+  }
+
+  // Nine spheres on a cube standing on its vertex.
+  var ATOM_NODES = [[0, -2.25], [-1.55, -0.85], [1.55, -0.85], [0, 0], [-1.55, 0.85], [1.55, 0.85], [0, 2.25]];
+  var ATOM_EDGES = [[0, 1], [0, 2], [0, 3], [3, 1], [3, 2], [3, 4], [3, 5], [6, 4], [6, 5], [6, 3], [1, 4], [2, 5]];
+
+  function drawAtomium(g, x, y, r) {
+    g.save();
+    g.strokeStyle = 'rgba(22,12,44,0.9)';
+    g.lineWidth = r * 0.42;
+    g.lineCap = 'round';
+    for (var e = 0; e < ATOM_EDGES.length; e++) {
+      var a = ATOM_NODES[ATOM_EDGES[e][0]], b = ATOM_NODES[ATOM_EDGES[e][1]];
+      g.beginPath();
+      g.moveTo(x + a[0] * r * 1.6, y + a[1] * r * 1.6);
+      g.lineTo(x + b[0] * r * 1.6, y + b[1] * r * 1.6);
+      g.stroke();
+    }
+    for (var n = 0; n < ATOM_NODES.length; n++) {
+      var p = ATOM_NODES[n];
+      var px = x + p[0] * r * 1.6, py = y + p[1] * r * 1.6;
+      g.fillStyle = 'rgba(22,12,44,0.95)';
+      g.beginPath();
+      g.arc(px, py, r, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = 'rgba(255,190,90,0.5)';   // sun catching the spheres
+      g.beginPath();
+      g.arc(px + r * 0.28, py - r * 0.28, r * 0.34, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.restore();
+  }
+
+  // A row of Grand-Place style stepped gables.
+  var GABLES = [[0, 58, 34], [36, 82, 30], [68, 46, 38], [108, 96, 32], [142, 64, 36], [180, 78, 30], [212, 52, 34]];
+
+  function guildRow(g, bx) {
+    for (var i = 0; i < GABLES.length; i++) {
+      var gx = bx + GABLES[i][0], gh = GABLES[i][1], gw = GABLES[i][2];
+      stepGable(g, gx, HORIZON - gh, gw, gh + 6, 4 + (i % 3));
+      // a couple of lit windows
+      g.fillStyle = 'rgba(255,206,120,0.35)';
+      for (var wy = 0; wy < 2; wy++) {
+        for (var wx = 0; wx < 2; wx++) {
+          if ((i + wx + wy) % 3 === 0) continue;
+          g.fillRect(gx + 6 + wx * (gw * 0.45), HORIZON - gh * 0.55 + wy * 14, gw * 0.22, 8);
+        }
+      }
     }
   }
 
-  function silhouette(g, bx) {
-    var bars = [[0, 46], [34, 74], [66, 34], [92, 96], [130, 58], [158, 80], [192, 40], [214, 66]];
-    for (var i = 0; i < bars.length; i++) {
-      var h = bars[i][1];
-      g.fillRect(bx + bars[i][0], HORIZON - h, 30, h + 6);
+  function stepGable(g, x, y, w, h, steps) {
+    g.fillStyle = 'rgba(16,8,34,0.88)';
+    g.beginPath();
+    g.moveTo(x, y + h);
+    g.lineTo(x, y + h * 0.4);
+    // stair-step up to the peak and back down
+    var sw = w / (steps * 2), sh = (h * 0.4) / steps;
+    for (var s = 0; s < steps; s++) {
+      g.lineTo(x + s * sw, y + h * 0.4 - s * sh);
+      g.lineTo(x + (s + 1) * sw, y + h * 0.4 - s * sh);
+      g.lineTo(x + (s + 1) * sw, y + h * 0.4 - (s + 1) * sh);
     }
+    g.lineTo(x + w / 2, y);
+    for (var s2 = steps - 1; s2 >= 0; s2--) {
+      g.lineTo(x + w - (s2 + 1) * sw, y + h * 0.4 - (s2 + 1) * sh);
+      g.lineTo(x + w - (s2 + 1) * sw, y + h * 0.4 - s2 * sh);
+      g.lineTo(x + w - s2 * sw, y + h * 0.4 - s2 * sh);
+    }
+    g.lineTo(x + w, y + h * 0.4);
+    g.lineTo(x + w, y + h);
+    g.closePath();
+    g.fill();
   }
 
   function drawRoad(g) {
@@ -457,6 +574,23 @@
     g.fillStyle = 'rgba(255,255,255,0.10)';
     quad(g, -ROAD_HALF - 0.16, -ROAD_HALF, NEAR_Z, FAR_Z);
     quad(g, ROAD_HALF, ROAD_HALF + 0.16, NEAR_Z, FAR_Z);
+
+    // Scuffs of spray on the asphalt. Deliberately wordless - text down
+    // here reads as an instruction and pulls your eye off the lanes.
+    var period2 = 46;
+    for (var t = 0; t < 4; t++) {
+      var dz = NEAR_Z + 8 + t * period2 - (st.travel % period2);
+      if (dz <= NEAR_Z + 1 || dz >= FAR_Z * 0.55) continue;
+      var dp = proj(((t % 3) - 1) * 1.6, 0.01, dz);
+      if (dp.s < 9) continue;
+      var idx = Math.floor((st.travel / period2 + t));
+      g.save();
+      g.globalAlpha = 0.3;
+      g.translate(dp.x, dp.y);
+      g.scale(1, 0.5);                        // flatten onto the ground plane
+      SG.art.spray(g, 0, 0, dp.s * 0.85, SG.SPRAY[idx % SG.SPRAY.length], 700 + (idx % 7) * 31);
+      g.restore();
+    }
 
     // dashed lane dividers
     g.fillStyle = 'rgba(255,244,224,0.55)';
@@ -499,33 +633,92 @@
       if (p.type === 'tree') {
         g.fillStyle = '#3a2a1e';
         g.fillRect(base.x - halfW * 0.18, top.y + (base.y - top.y) * 0.55, halfW * 0.36, (base.y - top.y) * 0.45);
-        g.fillStyle = '#274d33';
+        g.fillStyle = '#2d5c3c';
         g.beginPath();
         g.ellipse(base.x, top.y + (base.y - top.y) * 0.35, halfW * 1.1, (base.y - top.y) * 0.42, 0, 0, Math.PI * 2);
         g.fill();
-      } else if (p.type === 'sign') {
+      } else if (p.type === 'billboard') {
+        // "Santi Can't" - the channel, up in lights
         g.fillStyle = '#2a2a3e';
-        g.fillRect(base.x - halfW * 0.08, top.y, halfW * 0.16, base.y - top.y);
-        g.fillStyle = '#ffb02e';
-        SG.roundRect(g, base.x - halfW, top.y - halfW * 0.5, halfW * 2, halfW * 1.1, halfW * 0.15);
+        g.fillRect(base.x - halfW * 0.09, top.y, halfW * 0.18, base.y - top.y);
+        var bw = halfW * 2.3, bh = bw * 0.42;
+        g.fillStyle = '#14102a';
+        SG.roundRect(g, base.x - bw / 2, top.y - bh * 0.5, bw, bh, bw * 0.05);
         g.fill();
-        if (halfW > 12) {
-          SG.ui.text(g, 'WINGS', base.x, top.y, { size: Math.max(6, halfW * 0.42), color: '#17120a', shadow: false });
+        g.strokeStyle = p.tagColor;
+        g.lineWidth = Math.max(1, bw * 0.03);
+        g.stroke();
+        if (bw > 26) {
+          SG.ui.text(g, 'SANTI', base.x, top.y - bh * 0.16, { size: bw * 0.2, color: '#fff', shadow: false });
+          SG.ui.text(g, "CAN'T", base.x, top.y + bh * 0.16, { size: bw * 0.2, color: p.tagColor, shadow: false });
         }
       } else {
+        var bh2 = base.y - top.y;
         g.fillStyle = p.c;
-        g.fillRect(base.x - halfW, top.y, halfW * 2, base.y - top.y);
-        g.fillStyle = 'rgba(0,0,0,0.25)';
-        g.fillRect(base.x - halfW, top.y, halfW * 0.3, base.y - top.y);
-        if (p.lit && halfW > 3) {
-          g.fillStyle = 'rgba(255,214,120,0.55)';
-          var rows = Math.floor((base.y - top.y) / (halfW * 0.75));
+        g.fillRect(base.x - halfW, top.y, halfW * 2, bh2);
+        g.fillStyle = 'rgba(0,0,0,0.28)';
+        g.fillRect(base.x - halfW, top.y, halfW * 0.3, bh2);
+
+        // windows
+        if (halfW > 3) {
+          var rows = Math.floor(bh2 / (halfW * 0.75));
           for (var r = 0; r < rows; r++) {
             for (var c = 0; c < 3; c++) {
-              if ((r * 3 + c + p.h * 7 | 0) % 3 === 0) continue;
+              if ((r * 3 + c + p.seed) % 3 === 0) continue;
+              g.fillStyle = p.lit ? 'rgba(255,214,120,0.5)' : 'rgba(140,170,220,0.16)';
               g.fillRect(base.x - halfW * 0.7 + c * halfW * 0.55, top.y + halfW * 0.35 + r * halfW * 0.75, halfW * 0.3, halfW * 0.34);
             }
           }
+        }
+
+        // graffiti sprayed across the lower façade
+        if (halfW > 5) {
+          g.save();
+          g.beginPath();
+          g.rect(base.x - halfW, top.y, halfW * 2, bh2);
+          g.clip();
+          SG.art.spray(g, base.x + halfW * 0.1, base.y - bh2 * 0.16, halfW * 0.9, p.tagColor, p.seed);
+          if (p.tag && halfW > 11) {
+            SG.art.tag(g, p.tag, base.x, base.y - bh2 * 0.17, halfW * 0.5, p.tagColor, -0.06);
+          }
+          if (p.box && halfW > 9) {
+            SG.art.boxLogo(g, base.x, top.y + bh2 * 0.2, halfW * 1.15, 'SANTI', p.boxColor);
+          }
+          g.restore();
+        }
+
+        // easter egg: Rue or Daley at a window
+        if (p.peek && halfW > 9) {
+          // The head cutout, not the circular bust - it has a transparent
+          // background, so it reads as someone leaning into the window.
+          var head = SG.art.heads[p.peek];
+          var fw = halfW * 0.66;
+          var fx = base.x + halfW * 0.26;
+          var fy = top.y + bh2 * 0.34;
+          var wx0 = fx - fw * 0.8, wy0 = fy - fw * 0.95, ww = fw * 1.6, wh = fw * 1.9;
+
+          g.save();
+          g.fillStyle = 'rgba(255,214,132,0.92)';         // lit room behind them
+          g.fillRect(wx0, wy0, ww, wh);
+          g.beginPath();
+          g.rect(wx0, wy0, ww, wh);
+          g.clip();
+          if (head) {
+            var hh = wh * 1.12;
+            var hwid = hh * (head.width / head.height);
+            g.drawImage(head, fx - hwid / 2, wy0 + wh * 0.1, hwid, hh);
+          }
+          g.restore();
+
+          g.strokeStyle = 'rgba(20,14,34,0.9)';
+          g.lineWidth = Math.max(1, halfW * 0.07);
+          g.strokeRect(wx0, wy0, ww, wh);
+          g.beginPath();                                  // window frame
+          g.moveTo(wx0 + ww / 2, wy0);
+          g.lineTo(wx0 + ww / 2, wy0 + wh);
+          g.moveTo(wx0, wy0 + wh * 0.45);
+          g.lineTo(wx0 + ww, wy0 + wh * 0.45);
+          g.stroke();
         }
       }
     }
@@ -588,6 +781,36 @@
       g.arc(p.x, p.y, gr, 0, Math.PI * 2);
       g.fill();
       SG.art.drawWing(g, p.x, p.y, scale, en.rot);
+      g.restore();
+      return;
+    }
+
+    if (en.type === 'sauce') {
+      var hp = proj(wx, en.wy, en.z);
+      var hs = hp.s * 0.021;
+      if (hs < 0.09) return;
+      g.save();
+      g.translate(hp.x, hp.y);
+      g.rotate(Math.sin(en.rot) * 0.2);
+      g.scale(hs, hs);
+      g.fillStyle = 'rgba(255,60,20,0.22)';
+      g.beginPath(); g.arc(0, 0, 32, 0, Math.PI * 2); g.fill();
+      // bottle
+      g.fillStyle = '#c8181c';
+      g.strokeStyle = '#2c0d0d';
+      g.lineWidth = 2;
+      SG.roundRect(g, -9, -8, 18, 26, 4);
+      g.fill(); g.stroke();
+      g.fillStyle = '#ffd400';                 // cap
+      SG.roundRect(g, -6, -20, 12, 12, 3);
+      g.fill(); g.stroke();
+      g.fillStyle = '#fff4e0';                 // label
+      SG.roundRect(g, -7, -1, 14, 12, 2);
+      g.fill();
+      g.fillStyle = '#c8181c';
+      g.beginPath();                            // little flame on the label
+      g.moveTo(0, 1); g.quadraticCurveTo(4, 5, 0, 9); g.quadraticCurveTo(-4, 5, 0, 1);
+      g.fill();
       g.restore();
       return;
     }
@@ -675,6 +898,15 @@
     g.ellipse(ground.x, ground.y, h * 0.24 * (1 - airT * 0.35), h * 0.075 * (1 - airT * 0.35), 0, 0, Math.PI * 2);
     g.fill();
 
+    // hot-sauce aura
+    if (st.sauce > 0) {
+      var ag = g.createRadialGradient(ground.x, ground.y - h * 0.42, h * 0.08, ground.x, ground.y - h * 0.42, h * 0.62);
+      ag.addColorStop(0, 'rgba(255,120,20,' + (0.3 + Math.sin(st.t * 18) * 0.1) + ')');
+      ag.addColorStop(1, 'rgba(255,60,10,0)');
+      g.fillStyle = ag;
+      g.fillRect(ground.x - h * 0.7, ground.y - h * 1.1, h * 1.4, h * 1.4);
+    }
+
     // magnet aura
     if (st.magnet > 0) {
       g.save();
@@ -698,7 +930,8 @@
     }
 
     SG.art.drawSanti(g, feet.x, feet.y, sliding ? h * 0.92 : h, st.runPhase, {
-      shirt: SG.COLORS.red,
+      shirt: SG.COLORS.purple,
+      boxColor: SG.COLORS.red,
       pants: '#232a46',
       run: st.grounded && !sliding ? 1 : 0.25,
       face: 'santi',
@@ -729,17 +962,10 @@
     SG.art.drawWing(g, SG.W - 104, 36, 1.15, -0.3);
     SG.ui.text(g, String(st.wings), SG.W - 84, 36, { size: 26, color: SG.COLORS.gold, align: 'left', stroke: '#1a1030', strokeWidth: 6, shadow: false });
 
-    // magnet timer
-    if (st.magnet > 0) {
-      var w = 150 * (st.magnet / 8);
-      g.fillStyle = 'rgba(0,0,0,0.4)';
-      SG.roundRect(g, CX - 75, 22, 150, 12, 6);
-      g.fill();
-      g.fillStyle = '#4dd47a';
-      SG.roundRect(g, CX - 75, 22, w, 12, 6);
-      g.fill();
-      SG.ui.text(g, 'MAGNET', CX, 48, { size: 12, color: '#4dd47a', shadow: false });
-    }
+    // power-up timers
+    var bar = 0;
+    if (st.sauce > 0) { powerBar(g, bar++, st.sauce / 6, SG.COLORS.sauce, 'HOT SAUCE'); }
+    if (st.magnet > 0) { powerBar(g, bar++, st.magnet / 8, '#4dd47a', 'MAGNET'); }
 
     // popups
     for (var i = 0; i < st.popups.length; i++) {
@@ -761,6 +987,17 @@
       g.fillRect(pr.x + 13, pr.y + 10, 5, 15);
       g.fillRect(pr.x + 23, pr.y + 10, 5, 15);
     }
+  }
+
+  function powerBar(g, slot, frac, color, label) {
+    var y = 22 + slot * 30;
+    g.fillStyle = 'rgba(0,0,0,0.45)';
+    SG.roundRect(g, CX - 75, y, 150, 12, 6);
+    g.fill();
+    g.fillStyle = color;
+    SG.roundRect(g, CX - 75, y, 150 * SG.clamp(frac, 0, 1), 12, 6);
+    g.fill();
+    SG.ui.text(g, label, CX, y + 20, { size: 11, color: color, shadow: false });
   }
 
   function drawReady(g) {
@@ -803,9 +1040,12 @@
 
     SG.ui.panel(g, CX - 220, 96, 440, 350);
 
-    SG.ui.text(g, st.newBest ? 'NEW BEST!' : 'WIPEOUT', CX, 138, {
-      size: 36, color: st.newBest ? SG.COLORS.gold : '#ff6b5c', stroke: '#1a1030', strokeWidth: 8, shadow: false,
-    });
+    if (st.newBest) {
+      SG.ui.text(g, 'NEW BEST!', CX, 138, { size: 36, color: SG.COLORS.gold, stroke: '#1a1030', strokeWidth: 8, shadow: false });
+    } else {
+      // Flemish for "darn", and the only acceptable reaction to a crash.
+      SG.art.tag(g, 'LAP!', CX, 140, 46, '#ff2d6f', -0.05);
+    }
 
     SG.ui.text(g, String(st.score), CX, 202, { size: 62, color: '#fff', stroke: '#1a1030', strokeWidth: 9, shadow: false });
     SG.ui.text(g, 'SCORE', CX, 240, { size: 13, color: 'rgba(255,255,255,0.45)', shadow: false });

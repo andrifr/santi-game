@@ -24,8 +24,12 @@
     red: '#e8202a',
     cream: '#fff4e0',
     green: '#4dd47a',
-    purple: '#8b5cf6',
+    purple: '#7c4dff',
+    sauce: '#d9501f',
   };
+
+  // Spray-can palette - the graffiti running through every mode.
+  SG.SPRAY = ['#ff2d6f', '#ffd400', '#00e5ff', '#7c4dff', '#4dd47a', '#ff7a1a'];
 
   // ---------------------------------------------------------------
   // Utilities
@@ -276,6 +280,12 @@
       case 'crash':   noise(0.5, { freq: 500, vol: 0.5 }); tone(180, 0.4, { type: 'sawtooth', to: 55, vol: 0.3 }); break;
       case 'power':   tone(520, 0.08, { type: 'sawtooth', vol: 0.2 }); setTimeout(function () { tone(700, 0.08, { type: 'sawtooth', vol: 0.2 }); }, 70); setTimeout(function () { tone(1040, 0.18, { type: 'sawtooth', vol: 0.22 }); }, 140); break;
       case 'record':  tone(1200, 0.05, { type: 'sine', vol: 0.15 }); break;
+      // "Lap!" - Flemish for "darn". Two-tone falling grumble.
+      case 'lap':     tone(430, 0.1, { type: 'square', to: 300, vol: 0.22 });
+                      setTimeout(function () { tone(250, 0.2, { type: 'sawtooth', to: 150, vol: 0.2 }); }, 95); break;
+      case 'sauce':   tone(300, 0.09, { type: 'sawtooth', vol: 0.2 });
+                      setTimeout(function () { tone(450, 0.09, { type: 'sawtooth', vol: 0.2 }); }, 70);
+                      setTimeout(function () { tone(680, 0.22, { type: 'sawtooth', to: 1100, vol: 0.24 }); }, 140); break;
     }
   };
 
@@ -642,7 +652,7 @@
      one, everything falls back to the drawn chibi. */
   art.drawSanti = function (g, x, yFeet, h, phase, o) {
     o = o || {};
-    var shirt = o.shirt || SG.COLORS.red;
+    var shirt = o.shirt || SG.COLORS.purple;
     var pants = o.pants || '#2b3350';
     var skin = o.skin || '#e8b48c';
     var shoe = o.shoe || '#f7f7f7';
@@ -762,11 +772,9 @@
     SG.roundRect(g, x - bodyW / 2, hipY - h * 0.02, bodyW, h * 0.12, h * 0.06);
     g.fill();
 
-    // Supreme-ish box logo
+    // box logo across the chest
     if (o.box !== false) {
-      g.fillStyle = 'rgba(255,255,255,0.94)';
-      SG.roundRect(g, x - bodyW * 0.33, shoulderY + h * 0.035, bodyW * 0.66, h * 0.072, h * 0.012);
-      g.fill();
+      art.boxLogo(g, x, shoulderY + h * 0.072, bodyW * 0.72, o.boxText || 'SANTI', o.boxColor || SG.COLORS.red);
     }
 
     leg(1, false);
@@ -779,44 +787,128 @@
     art.drawHead(g, x, headY, headR, faceKey, variant);
   };
 
-  // Chicken wing - the currency of this universe.
+  /* Chicken wing - the currency of this universe. A party-wing "flat":
+     curved meaty piece, two bones out one end, drenched in hot sauce
+     (Santi takes his wings hot). */
   art.drawWing = function (g, x, y, s, rot) {
     g.save();
     g.translate(x, y);
     g.rotate(rot || 0);
     g.scale(s, s);
 
-    g.fillStyle = '#c9762e';
-    g.strokeStyle = '#7d3f14';
-    g.lineWidth = 1.6;
+    // the two bones poking out the narrow end
+    g.fillStyle = '#f6ead2';
+    g.strokeStyle = '#3a2412';
+    g.lineWidth = 1.4;
+    g.lineJoin = 'round';
+    [-2.6, 2.6].forEach(function (dy) {
+      g.beginPath();
+      g.moveTo(-9, dy * 0.6);
+      g.lineTo(-16, dy);
+      g.arc(-17, dy, 1.9, 0, Math.PI * 2);
+      g.lineTo(-9, dy * 0.6 + 1.8);
+      g.closePath();
+      g.fill();
+      g.stroke();
+    });
+
+    // meat, curved like a wing flat
+    g.fillStyle = '#d9501f';
+    g.strokeStyle = '#3a2412';
+    g.lineWidth = 1.7;
     g.beginPath();
-    g.moveTo(-9, 4);
-    g.quadraticCurveTo(-13, -6, -4, -10);
-    g.quadraticCurveTo(7, -13, 10, -3);
-    g.quadraticCurveTo(12, 6, 3, 8);
-    g.quadraticCurveTo(-5, 10, -9, 4);
+    g.moveTo(-10, -1.5);
+    g.bezierCurveTo(-6, -9.5, 5, -10.5, 11, -3.5);
+    g.bezierCurveTo(14.5, 0.5, 12.5, 7, 7, 8.5);
+    g.bezierCurveTo(-1, 10.5, -7, 7, -10, 3);
     g.closePath();
     g.fill();
     g.stroke();
 
-    // glaze highlight
-    g.fillStyle = 'rgba(255,196,110,0.6)';
+    // hot-sauce glaze
+    g.fillStyle = 'rgba(255,140,60,0.55)';
     g.beginPath();
-    g.ellipse(-2, -5, 5, 2.6, -0.5, 0, Math.PI * 2);
+    g.ellipse(1, -4.6, 6.2, 2.4, -0.22, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = 'rgba(255,232,190,0.7)';
+    g.beginPath();
+    g.ellipse(3.5, -5.6, 2.6, 1.05, -0.25, 0, Math.PI * 2);
     g.fill();
 
-    // bone
-    g.fillStyle = '#fdf3e0';
-    g.strokeStyle = '#c9b795';
-    g.lineWidth = 1.2;
-    g.beginPath();
-    g.moveTo(-8, 5);
-    g.lineTo(-15, 10);
-    g.lineTo(-13, 13);
-    g.lineTo(-6, 8);
-    g.closePath();
+    // crispy speckle
+    g.fillStyle = 'rgba(90,30,10,0.5)';
+    [[-3, 2.5], [4, 3.5], [8, -0.5], [-6, -2]].forEach(function (p) {
+      g.beginPath();
+      g.arc(p[0], p[1], 0.85, 0, Math.PI * 2);
+      g.fill();
+    });
+
+    g.restore();
+  };
+
+  /* ---- graffiti / streetwear kit, shared across modes ---- */
+
+  // Box logo: coloured rectangle, white oblique wordmark.
+  art.boxLogo = function (g, cx, cy, w, text, color) {
+    var h = w * 0.36;
+    g.save();
+    g.fillStyle = color || SG.COLORS.red;
+    SG.roundRect(g, cx - w / 2, cy - h / 2, w, h, w * 0.03);
     g.fill();
-    g.stroke();
+    if (h > 6) {
+      g.beginPath();
+      g.rect(cx - w / 2, cy - h / 2, w, h);
+      g.clip();
+      g.font = '900 ' + (h * 0.72).toFixed(1) + 'px ' + SG.FONT;
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillStyle = '#fff';
+      g.translate(cx, cy);
+      g.transform(1, 0, -0.2, 1, 0, 0);      // fake oblique
+      g.fillText(text || 'SANTI', 0, h * 0.06);
+    }
+    g.restore();
+  };
+
+  // Deterministic little PRNG so scenery doesn't shimmer between frames.
+  SG.seeded = function (seed) {
+    var s = (seed | 0) || 1;
+    return function () {
+      s = (s * 16807) % 2147483647;
+      return s / 2147483647;
+    };
+  };
+
+  // Spray-paint splat.
+  art.spray = function (g, x, y, r, color, seed) {
+    var rnd = SG.seeded(seed);
+    g.save();
+    g.fillStyle = color;
+    for (var i = 0; i < 16; i++) {
+      var a = rnd() * 6.283, d = rnd() * r;
+      g.globalAlpha = 0.12 + rnd() * 0.28;
+      g.beginPath();
+      g.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, r * (0.1 + rnd() * 0.32), 0, Math.PI * 2);
+      g.fill();
+    }
+    g.restore();
+  };
+
+  // Graffiti tag - slanted wordmark with a fat outline.
+  art.tag = function (g, text, x, y, size, color, angle) {
+    g.save();
+    g.translate(x, y);
+    g.rotate(angle || 0);
+    g.transform(1, 0, -0.26, 1, 0, 0);
+    g.font = '900 ' + size + 'px ' + SG.FONT;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.lineJoin = 'round';
+    g.lineWidth = size * 0.3;
+    g.strokeStyle = 'rgba(10,8,18,0.85)';
+    g.strokeText(text, 0, 0);
+    g.fillStyle = color;
+    g.fillText(text, 0, 0);
     g.restore();
   };
 
