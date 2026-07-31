@@ -114,9 +114,13 @@
   var TAP_MAX_MOVE = 22;
   var TAP_MAX_TIME = 400;
 
-  function onDown(id, cx, cy) {
+  function onDown(id, cx, cy, kind) {
     var p = toVirtual(cx, cy);
-    input.pointers[id] = { x: p.x, y: p.y, sx: p.x, sy: p.y, t0: performance.now(), fired: false };
+    input.pointers[id] = {
+      x: p.x, y: p.y, sx: p.x, sy: p.y,
+      t0: performance.now(), fired: false,
+      type: kind || 'touch',      // modes branch on mouse vs finger
+    };
     input.anyDown = true;
     input.justPressed = true;
     SG.audio.unlock();
@@ -149,7 +153,7 @@
   }
 
   if (window.PointerEvent) {
-    canvas.addEventListener('pointerdown', function (e) { e.preventDefault(); onDown(e.pointerId, e.clientX, e.clientY); });
+    canvas.addEventListener('pointerdown', function (e) { e.preventDefault(); onDown(e.pointerId, e.clientX, e.clientY, e.pointerType); });
     canvas.addEventListener('pointermove', function (e) { onMove(e.pointerId, e.clientX, e.clientY); });
     canvas.addEventListener('pointerup', function (e) { onUp(e.pointerId); });
     canvas.addEventListener('pointercancel', function (e) { onUp(e.pointerId); });

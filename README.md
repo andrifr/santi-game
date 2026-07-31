@@ -108,23 +108,38 @@ deflecting, so going for one can never cost you the rally.
 
 **Brawl Showdown**
 
-Twin stick, three-quarter view. Left thumb moves, right thumb aims and
-fires — or tap the right half to auto-aim at the nearest target, the way
-Brawl Stars does it. Keyboard: WASD.
-
 Five Daleys close in and smother Santi with hearts. Each round you draft
 which Santi you are, then one of three power-ups; the power-ups stack for
 the rest of the run, and every round adds another Daley and makes them
 tougher.
 
-| | Health | Damage | Range | Speed |
-| --- | --- | --- | --- | --- |
-| **Santi** | 110 | medium | medium | medium |
-| **Dark Santi** | 150 | three-shot spread | short | slow |
-| **Santi Noir** | 78 | heavy single shot | long | fast |
+| Action | Phone | Desktop |
+| ------ | ----- | ------- |
+| Move | left thumb | W A S D |
+| Aim | hold right thumb | hold left mouse |
+| Shoot | release | release |
+| Quick shot | tap the right half — auto-aims at the nearest | click |
 
-Standing still gets you killed in about six seconds. Keep moving and a
-round runs 15–30.
+**Hold to aim, release to shoot.** While you're holding, the exact shot
+line, its reach and (for Dark Santi) the spread cone are drawn on the
+ground, so you can see where it goes before you commit it.
+
+**Three shots, then a reload.** Shells come back one at a time, about a
+second each, shown as pips under Santi's feet. You can't just hold the
+trigger down.
+
+**He heals** slowly once he's been out of the fight for a few seconds —
+neither shooting nor being hit.
+
+| | Health | Power | Range | Speed |
+| --- | --- | --- | --- | --- |
+| **Santi** | 110 | ●●●○○ | ●●●○○ | ●●●●○ |
+| **Dark Santi** | 150 | ●●●●● | ●●○○○ | ●●●○○ |
+| **Santi Noir** | 80 | ●●●●○ | ●●●●● | ●○○○○ |
+
+Every kit totals exactly 10 dashes, so no build is strictly better.
+Standing still kills you in about six seconds. Keep moving and a round
+runs 15–20.
 
 **Santi Simulator**
 
