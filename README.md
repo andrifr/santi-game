@@ -89,12 +89,37 @@ returns it flat and fast, edge contact sends it wide and slow. First to
 Every point won pays **100 chicken wings** into the same jar Wing Run
 fills, plus a 500 bonus for taking the match.
 
-**Kinder eggs.** One or two float over the far court at a time. Hit one
-with the ball and it cracks in mid-air for a **100-wing bonus** — shell
-halves tumble out and a random toy drops to the court. Then Daley
-sprints on, grabs the toy and runs off with it. Play never stops for
-her. The ball passes straight through an egg rather than deflecting, so
-going for one can never cost you the rally.
+**Kinder eggs.** One or two hang over the far court in a beam of light.
+Put the ball through the beam and the egg cracks in mid-air for a
+**100-wing bonus** — shell halves tumble out and a random toy drops.
+Then Daley sprints on, grabs the toy and runs off with it, while play
+carries on around her.
+
+The beam *is* the hitbox, at its drawn width and full height. You steer
+the return left/right but have no control over its height, and the ball
+bounces on the far court, so judging a shot in two axes would be luck —
+the beam only asks whether you sent it through that column. The shadow
+on the court shows the lane to aim at. Eggs time out after 7 seconds
+and blink before they go; left up indefinitely a wandering ball clips
+them on its own, which makes the bonus free instead of something you go
+for. Measured: about half land for a player who never aims, essentially
+all of them for a player who does. The ball passes through rather than
+deflecting, so going for one can never cost you the rally.
+
+## Sound
+
+All effects are synthesized in the browser — no audio files, no load
+cost. Two recorded clips are the exception:
+
+| File | When |
+| ---- | ---- |
+| `assets/voice/lap.mp3` | Santi's own "Lap!" — when Dark Santi takes a point, and when a Wing Run ends |
+| `assets/sound-effects/shortfart.mp3` | roughly every 10th jump in Wing Run (randomised 8–13 so it isn't metronomic) |
+
+Both degrade gracefully: if a file is missing or won't decode, the
+synthesized cue plays instead and the game retries next time. iOS can't
+create an audio context until the first touch, so clips are fetched
+immediately and decoded on that first tap.
 
 ## Characters
 

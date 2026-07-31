@@ -70,22 +70,40 @@
      They float over the court as an optional target. The ball passes
      straight through rather than deflecting - they're a bonus, never a
      hazard that costs you the rally. */
-  var EGG_R = 0.36;
+  /* The egg hangs in a vertical beam of light, and the whole beam is the
+     target. The player steers the return left/right and has no control
+     whatsoever over its height - and because the ball bounces in the far
+     court, its height at any given z varies hugely. Judging a shot in
+     two axes when you can only aim in one is luck, so the hitbox ignores
+     height and asks only "did you send it through this column?".
+     The beam is drawn full height so the rule is visible. */
+  var EGG_RH = 0.52;       // column radius
+  var EGG_TOP = 2.9;       // beam reaches this high
+  var EGG_BOT = 0.1;
   var EGG_WINGS = 100;
   var TOY_KINDS = ['car', 'top', 'duck', 'ring', 'robot'];
 
-  // Placed inside the envelope a returned ball actually flies through -
-  // it peaks around the net near 2.3m and descends past it. Eggs parked
-  // above that are decorative, not targets.
+  // Measured flight: a return crosses the far court at ~2.3m by the net,
+  // falling to ~1.0m at the baseline. Eggs sit on that line so they're
+  // in the ball's way by construction.
+  function ballHeightAt(z) {
+    return SG.clamp(2.3 - 0.28 * (z - NET_Z), 0.8, 2.5);
+  }
+
+  var EGG_LIFE = 7;
+
   function spawnEgg() {
-    var z = SG.rand(NET_Z + 0.2, COURT_LEN - 1.0);
-    var drop = (z - NET_Z) / (COURT_LEN - NET_Z);      // 0 at net, 1 at baseline
+    var z = SG.rand(NET_Z + 0.5, COURT_LEN - 1.2);
     st.eggs.push({
-      x: SG.rand(-2.4, 2.4),
+      x: SG.rand(-2.3, 2.3),
       z: z,
-      y: SG.rand(1.0, 2.2) - drop * 0.45,
+      y: ballHeightAt(z) + SG.rand(-0.2, 0.2),
       bob: Math.random() * 6.28,
       spin: SG.rand(-0.5, 0.5),
+      // Eggs time out. Left on court indefinitely a wandering ball
+      // eventually clips one on its own, which makes the bonus free
+      // rather than something you go for.
+      life: EGG_LIFE,
     });
   }
 
@@ -133,7 +151,7 @@
       st.eggT -= dt;
       if (st.eggT <= 0 && st.eggs.length < 2) {
         spawnEgg();
-        st.eggT = SG.rand(4, 7);
+        st.eggT = SG.rand(3, 5.5);
       }
     }
 
@@ -141,8 +159,15 @@
     for (var i = st.eggs.length - 1; i >= 0; i--) {
       var e = st.eggs[i];
       e.bob += dt;
+      e.life -= dt;
+      if (e.life <= 0) { st.eggs.splice(i, 1); continue; }
       e.y += Math.sin(e.bob * 1.6) * dt * 0.22;
-      if (b.live && segDist(prev.x, prev.y, prev.z, b.x, b.y, b.z, e.x, e.y, e.z) < EGG_R + BALL_R) {
+
+      // Flatten to the ground plane: did the ball's path this frame pass
+      // through the column, at any playable height?
+      if (b.live &&
+          segDist(prev.x, 0, prev.z, b.x, 0, b.z, e.x, 0, e.z) < EGG_RH + BALL_R &&
+          Math.min(prev.y, b.y) < EGG_TOP && Math.max(prev.y, b.y) > EGG_BOT) {
         crackEgg(e, i);
       }
     }
@@ -651,13 +676,42 @@
 
   function drawEgg(g, e) {
     var p = proj(e.x, e.y, e.z);
-    var r = p.s * EGG_R;
+    var r = p.s * EGG_RH;
     if (r < 2) return;
 
-    // glow so it reads as a target
-    g.fillStyle = 'rgba(255,180,60,0.16)';
+    // Blink out over the last 1.5s so it's clear the chance is going.
+    g.save();
+    if (e.life < 1.5) {
+      g.globalAlpha = 0.35 + 0.65 * Math.abs(Math.sin(e.life * 12));
+    }
+
+    // Shadow on the court directly below - this is the aiming cue. You
+    // steer left/right, so you need to see the egg's lane on the floor.
+    var gp = proj(e.x, 0, e.z);
+    g.fillStyle = 'rgba(0,0,0,0.28)';
     g.beginPath();
-    g.arc(p.x, p.y, r * 1.9, 0, Math.PI * 2);
+    g.ellipse(gp.x, gp.y, gp.s * EGG_RH * 0.9, gp.s * EGG_RH * 0.4, 0, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = 'rgba(255,180,60,0.4)';
+    g.lineWidth = 1.5;
+    g.stroke();
+
+    // The beam, drawn at the true hitbox width and full height so the
+    // rule reads at a glance: put the ball through the light.
+    var half = (EGG_RH + BALL_R);
+    var bt = proj(e.x, EGG_TOP, e.z), bb = proj(e.x, EGG_BOT, e.z);
+    var bw = bt.s * half;
+    var beam = g.createLinearGradient(bt.x - bw, 0, bt.x + bw, 0);
+    beam.addColorStop(0, 'rgba(255,170,50,0)');
+    beam.addColorStop(0.5, 'rgba(255,190,80,0.2)');
+    beam.addColorStop(1, 'rgba(255,170,50,0)');
+    g.fillStyle = beam;
+    g.beginPath();
+    g.moveTo(bt.x - bw, bt.y);
+    g.lineTo(bt.x + bw, bt.y);
+    g.lineTo(bb.x + bb.s * half, bb.y);
+    g.lineTo(bb.x - bb.s * half, bb.y);
+    g.closePath();
     g.fill();
 
     g.save();
@@ -696,6 +750,8 @@
     g.ellipse(-7, -16, 5, 8, -0.4, 0, Math.PI * 2);
     g.fill();
     g.restore();
+
+    g.restore();      // closes the blink-alpha save at the top
   }
 
   function drawToy(g, t) {

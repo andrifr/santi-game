@@ -65,6 +65,8 @@
       newBest: false,
       deadT: 0,
       streak: 0,
+      jumps: 0,
+      nextFart: SG.randInt(5, 9),
     };
     for (var i = 0; i < 26; i++) {
       spawnProp(NEAR_Z + Math.random() * (FAR_Z - NEAR_Z));
@@ -290,7 +292,7 @@
       }
       if (st.sauce <= 0) {
         popup('SAUCE GONE', '#ff6b5c');
-        SG.audio.play('lap');
+        SG.audio.play('back');       // not a loss - keep "Lap!" for those
         SG.shake(4);
       }
 
@@ -360,7 +362,16 @@
     st.grounded = false;
     st.slide = 0;
     st.vy = JUMP_V;
-    SG.audio.play('jump');
+
+    // Roughly every tenth jump, something else happens. Randomised a
+    // little so it isn't metronomic. If the clip isn't decoded yet the
+    // call fails and we just play the normal hop, then try again next time.
+    st.jumps++;
+    if (st.jumps >= st.nextFart && SG.audio.playSample('fart', 0.85)) {
+      st.nextFart = st.jumps + SG.randInt(8, 13);
+    } else {
+      SG.audio.play('jump');
+    }
   }
 
   function startSlide() {

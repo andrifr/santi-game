@@ -29,6 +29,12 @@
     { key: 'rue-face',    src: F + 'rue-face.png' },
   ];
 
+  // Santi saying "Lap!" - plays when he loses. Decoded once the audio
+  // context wakes up on first touch; the synth cue covers it until then.
+  SG.audio.loadSample('lap', 'assets/voice/lap.mp3');
+  // Occasional accompaniment to a jump in Wing Run.
+  SG.audio.loadSample('fart', 'assets/sound-effects/shortfart.mp3');
+
   SG.start('menu');
   SG.initShell();
 

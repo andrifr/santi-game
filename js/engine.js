@@ -224,7 +224,52 @@
       audio.master.connect(audio.ctx.destination);
       audio.ready = true;
       if (audio.ctx.state === 'suspended') audio.ctx.resume();
+      for (var k in audio.samples) decodeSample(k);   // anything preloaded
     } catch (e) { /* no audio, no problem */ }
+  };
+
+  /* ---- recorded samples (voice lines) ----
+     Downloaded eagerly, decoded once the AudioContext exists - which on
+     iOS can't happen until the first touch. Everything degrades to the
+     synthesized cue if the file is missing or won't decode. */
+  audio.samples = {};
+
+  function decodeSample(key) {
+    var s = audio.samples[key];
+    if (!s || s.buffer || s.failed || !s.raw || !audio.ctx) return;
+    // decodeAudioData detaches the ArrayBuffer, so hand it a copy and
+    // keep the original for a possible retry.
+    audio.ctx.decodeAudioData(
+      s.raw.slice(0),
+      function (buf) { s.buffer = buf; },
+      function () { s.failed = true; }
+    );
+  }
+
+  audio.loadSample = function (key, url) {
+    if (!window.fetch) return;
+    fetch(url)
+      .then(function (r) { return r.ok ? r.arrayBuffer() : Promise.reject(); })
+      .then(function (ab) { audio.samples[key] = { raw: ab }; decodeSample(key); })
+      .catch(function () { /* fall back to the synth cue */ });
+  };
+
+  // Returns false if the sample isn't playable, so callers can fall back.
+  audio.playSample = function (key, vol) {
+    if (!audio.ready || !audio.enabled) return false;
+    var s = audio.samples[key];
+    if (!s || s.failed) return false;
+    if (!s.buffer) { decodeSample(key); return false; }
+    try {
+      var src = audio.ctx.createBufferSource();
+      src.buffer = s.buffer;
+      var g = audio.ctx.createGain();
+      g.gain.value = vol === undefined ? 0.9 : vol;
+      src.connect(g);
+      g.connect(audio.master);
+      src.start(0);
+      return true;
+    } catch (e) { return false; }
   };
 
   function tone(freq, dur, opts) {
@@ -282,8 +327,10 @@
       case 'bounce':  tone(420, 0.045, { type: 'sine', to: 300, vol: 0.13 }); break;
       case 'point':   tone(620, 0.08, { type: 'triangle', vol: 0.22 });
                       setTimeout(function () { tone(930, 0.14, { type: 'triangle', vol: 0.22 }); }, 80); break;
-      // "Lap!" - Flemish for "darn". Two-tone falling grumble.
-      case 'lap':     tone(430, 0.1, { type: 'square', to: 300, vol: 0.22 });
+      // "Lap!" - Flemish for "darn". Santi's own voice if it loaded,
+      // otherwise a two-tone falling grumble.
+      case 'lap':     if (audio.playSample('lap', 1.0)) break;
+                      tone(430, 0.1, { type: 'square', to: 300, vol: 0.22 });
                       setTimeout(function () { tone(250, 0.2, { type: 'sawtooth', to: 150, vol: 0.2 }); }, 95); break;
       case 'sauce':   tone(300, 0.09, { type: 'sawtooth', vol: 0.2 });
                       setTimeout(function () { tone(450, 0.09, { type: 'sawtooth', vol: 0.2 }); }, 70);
