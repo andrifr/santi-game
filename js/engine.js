@@ -557,12 +557,14 @@
         if (widths[y3] <= minW) { minW = widths[y3]; neck = y3; }
         else if (widths[y3] > minW * 1.35) break;    // shoulders
       }
-      // Only trust it if the silhouette genuinely pinched in.
+      // Only trust it if the silhouette genuinely pinched in. The margin
+      // below the pinch is generous because a high collar (Dark Santi's
+      // jacket) puts the narrowest row up at the jaw rather than under it.
       if (minW < maxW * 0.85) {
-        return SG.clamp((neck + img.height * 0.03) / img.height, 0.45, 0.9);
+        return SG.clamp((neck + img.height * 0.07) / img.height, 0.45, 0.9);
       }
     } catch (e) {}
-    return 0.72;
+    return 0.76;
   }
 
   /* Head only, alpha preserved - hair silhouette and all. Drawn on top
@@ -724,7 +726,7 @@
       // down over the torso. Head is drawn last, so it reads as in front.
       var hw = r * 2.18;
       var hh = hw * (head.height / head.width);
-      g.drawImage(head, cx - hw / 2, cy - r * 0.94, hw, hh);
+      g.drawImage(head, cx - hw / 2, cy - r * 1.08, hw, hh);
       return;
     }
     var face = art.faces[key];
@@ -870,7 +872,9 @@
 
     // box logo across the chest
     if (o.box !== false) {
-      art.boxLogo(g, x, shoulderY + h * 0.072, bodyW * 0.72,
+      // Sat low on the chest so a head cutout with a collar in it can
+      // hang over the shoulders without burying the logo.
+      art.boxLogo(g, x, shoulderY + h * 0.098, bodyW * 0.72,
                   o.boxText || 'SANTI', o.boxColor || SG.COLORS.red, o.boxInk);
     }
 

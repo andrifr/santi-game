@@ -13,7 +13,10 @@
     { key: 'santi', src: F + 'santi.png' },
     // Dark Santi wears the hat and the shades. Ungraded - the art is
     // already dark and the gold rims are the best part of it.
-    { key: 'dark',  src: F + 'santi-mj.png' },
+    // Explicit crop: his jacket collar sits high and the hat brim is the
+    // widest thing in frame, so the silhouette never pinches at a real
+    // neck and auto-detection stops at his lower lip.
+    { key: 'dark',  src: F + 'santi-mj.png', faceOpts: { crop: 0.79 } },
   ];
 
   // Everything else: alternate skins, Daley, Rue. Only used on menus and
