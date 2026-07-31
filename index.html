@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SANTI: THE GAME</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+
+<!-- iOS standalone / add-to-home-screen -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Santi">
+<meta name="theme-color" content="#0b0d1a">
+<meta name="description" content="Santi: The Game">
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<link rel="icon" href="assets/icons/icon-192.png">
+<link rel="stylesheet" href="css/style.css?v=1">
+</head>
+<body>
+<div id="app">
+  <canvas id="game"></canvas>
+
+  <!-- Shown when the phone is held in portrait -->
+  <div id="rotate" class="overlay hidden">
+    <div class="rotate-inner">
+      <div class="phone-icon"></div>
+      <h2>Rotate your phone</h2>
+      <p>This game is played in landscape.</p>
+    </div>
+  </div>
+
+  <!-- iOS "Add to Home Screen" hint (only shown in Safari, not standalone) -->
+  <div id="a2hs" class="hidden">
+    <div class="a2hs-inner">
+      <strong>Play fullscreen</strong>
+      <span>Tap <b>Share</b> <span class="share-glyph"></span> then <b>Add to Home Screen</b>, and launch it from your home screen.</span>
+      <button id="a2hsClose">Got it</button>
+    </div>
+  </div>
+
+  <button id="fsBtn" title="Fullscreen" aria-label="Fullscreen">&#9974;</button>
+</div>
+
+<!-- Bump ?v= after editing so phones don't serve a stale cached copy. -->
+<script src="js/engine.js?v=1"></script>
+<script src="js/menu.js?v=1"></script>
+<script src="js/wingrun.js?v=1"></script>
+<script src="js/stubs.js?v=1"></script>
+<script src="js/main.js?v=1"></script>
+</body>
+</html>
