@@ -527,16 +527,59 @@
     return img.width / 2;
   }
 
-  // Head only, alpha preserved - hair silhouette and all. This gets
-  // drawn on top of the animated body so the character can actually run.
+  /* Where the neck is, as a fraction of image height.
+
+     Found from the silhouette: the head is the widest thing near the
+     top, the shoulders flare out below, and the narrowest row between
+     the two is the neck. Cropping to a guessed fraction instead either
+     lops off the chin or drags half the chest up with it, and the right
+     number differs for every portrait. */
+  function neckFraction(img) {
+    var limit = Math.floor(img.height * 0.9);
+    var c = document.createElement('canvas');
+    c.width = img.width;
+    c.height = limit;
+    c.getContext('2d').drawImage(img, 0, 0);
+    try {
+      var w = img.width;
+      var px = c.getContext('2d').getImageData(0, 0, w, limit).data;
+      var widths = new Int32Array(limit);
+      for (var y = 0; y < limit; y++) {
+        var n = 0;
+        for (var x = 0; x < w; x++) if (px[(y * w + x) * 4 + 3] > 60) n++;
+        widths[y] = n;
+      }
+      var headRow = 0, maxW = 0, upper = Math.floor(limit * 0.6);
+      for (var y2 = 0; y2 < upper; y2++) if (widths[y2] > maxW) { maxW = widths[y2]; headRow = y2; }
+
+      var neck = headRow, minW = widths[headRow];
+      for (var y3 = headRow; y3 < limit; y3++) {
+        if (widths[y3] <= minW) { minW = widths[y3]; neck = y3; }
+        else if (widths[y3] > minW * 1.35) break;    // shoulders
+      }
+      // Only trust it if the silhouette genuinely pinched in.
+      if (minW < maxW * 0.85) {
+        return SG.clamp((neck + img.height * 0.03) / img.height, 0.45, 0.9);
+      }
+    } catch (e) {}
+    return 0.72;
+  }
+
+  /* Head only, alpha preserved - hair silhouette and all. Drawn on top
+     of the animated body so the character can actually run. The crop is
+     deliberately not square: width frames the head, height runs from the
+     top of the hair down to the neck. */
   art.headFromSprite = function (img, opts) {
     opts = opts || {};
     var size = opts.size || 256;
-    var side = Math.min(img.width, img.height * (opts.crop || 0.62));
-    var sx = SG.clamp(headCenterX(img) - side / 2, 0, Math.max(0, img.width - side));
+    var cw = Math.min(img.width, img.height * (opts.wide || 0.62));
+    var ch = Math.min(img.height, img.height * (opts.crop || neckFraction(img)));
+    var sx = SG.clamp(headCenterX(img) - cw / 2, 0, Math.max(0, img.width - cw));
+
     var out = document.createElement('canvas');
-    out.width = out.height = size;
-    out.getContext('2d').drawImage(img, sx, 0, side, side, 0, 0, size, size);
+    out.width = size;
+    out.height = Math.round(size * (ch / cw));
+    out.getContext('2d').drawImage(img, sx, 0, cw, ch, 0, 0, out.width, out.height);
     return out;
   };
 
@@ -675,12 +718,13 @@
   art.drawHead = function (g, cx, cy, r, key, variant) {
     var head = art.heads[key];
     if (head) {
-      var hh = r * 2.18;
-      var hw = hh * (head.width / head.height);
-      // Anchored low rather than centred, so the jaw and collar of the
-      // cutout overlap the torso instead of meeting it at a seam. The
-      // head is drawn last, so that overlap reads as "in front".
-      g.drawImage(head, cx - hw / 2, cy - hh * 0.43, hw, hh);
+      // Width and top are fixed, height follows the crop's aspect. That
+      // way the face always lands in the same place whatever the crop
+      // includes, and the extra below it - jaw, neck, collar - hangs
+      // down over the torso. Head is drawn last, so it reads as in front.
+      var hw = r * 2.18;
+      var hh = hw * (head.height / head.width);
+      g.drawImage(head, cx - hw / 2, cy - r * 0.94, hw, hh);
       return;
     }
     var face = art.faces[key];
