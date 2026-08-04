@@ -56,6 +56,29 @@
   function kitSpeed(k) { return 152 + k.bars.speed * 22; }
   function kitRange(k) { return 180 + k.bars.range * 72; }
 
+  /* ---------------------------------------------------------------
+     Supers. One per kit, charged by dealing damage, and each doing a
+     different job so the draft decides how you fight and not just how
+     hard you hit.
+     --------------------------------------------------------------- */
+  var CHARGE_DMG = 320;        // damage needed to fill the bar
+  var CHARGE_KILL = 0.07;      // a little extra for finishing one
+
+  var SUPERS = {
+    santi: {
+      name: 'WING STORM', short: 'WINGS', color: '#ffb02e',
+      desc: 'A ring of wings, every direction at once',
+    },
+    dark: {
+      name: 'THE LEAN', short: 'DASH', color: '#b46ad0',
+      desc: 'Lean in, dash through, send them flying',
+    },
+    noir: {
+      name: 'NOIR SHOT', short: 'PIERCE', color: '#e9e9ef',
+      desc: 'Pierces the whole arena. Heals you per hit.',
+    },
+  };
+
   var POWERS = [
     { id: 'speed',   name: 'SPEED',   desc: '+22% movement',   color: '#4dd47a' },
     { id: 'defence', name: 'DEFENCE', desc: '+28% max health', color: '#4aa8ff' },
@@ -70,7 +93,7 @@
       round: keep ? keep.round : 1,
       powers: keep ? keep.powers : { speed: 0, defence: 0, attack: 0 },
       kit: keep ? keep.kit : KITS[0],
-      me: null, bots: [], shots: [], crates: [],
+      me: null, bots: [], shots: [], beams: [], crates: [],
       cam: { x: ARENA_W / 2, y: ARENA_H / 2 },
       t: 0, msg: null, msgT: 0,
       moveStick: null, aim: null,
@@ -93,9 +116,11 @@
       ammo: MAX_AMMO, reload: 0,
       phase: 0, moving: false,
       hurtT: 99, shotT: 99, flash: 0,
+      charge: 0, superArmed: false, dash: null, superFx: 0,
     };
     st.bots = [];
     st.shots = [];
+    st.beams = [];
     st.crates = [];
 
     var spots = [[300, 300], [1200, 300], [300, 720], [1200, 720], [750, 200], [750, 830]];
@@ -140,6 +165,11 @@
 
     if (st.paused || st.phase !== 'fight') return;
 
+    // Claimed before readControls, or the same tap also aims and fires.
+    if (SG.input.tappedRect(superRect())) { armSuper(); return; }
+    if (SG.input.keys.KeyE && !st.superKeyWas) armSuper();
+    st.superKeyWas = !!SG.input.keys.KeyE;
+
     if (SG.input.tappedRect(pauseRect())) {
       st.paused = true;
       // Pausing lets go of every touch, so pause-and-resume clears a
@@ -167,9 +197,15 @@
       me.hp = Math.min(me.maxHp, me.hp + REGEN_RATE * dt);
     }
 
+    if (me.superFx > 0) me.superFx -= dt;
+    if (me.dash) updateDash(dt);       // dashing overrides steering
     readControls(dt);
     updateBots(dt);
     updateShots(dt);
+    for (var bi = st.beams.length - 1; bi >= 0; bi--) {
+      st.beams[bi].t += dt;
+      if (st.beams[bi].t > 0.4) st.beams.splice(bi, 1);
+    }
 
     var halfW = SG.W / 2, halfH = SG.H / (2 * SQUASH);
     var tx = SG.clamp(me.x, halfW, Math.max(halfW, ARENA_W - halfW));
@@ -203,8 +239,11 @@
     var me = st.me;
     var mvP = null, aimP = null;
 
+    var sr = superRect();
     for (var id in SG.input.pointers) {
       var p = SG.input.pointers[id];
+      // A thumb that landed on the super button is not an aim.
+      if (inRect(p.sx, p.sy, sr)) continue;
       if (p.type === 'mouse') { if (!aimP) aimP = p; }
       else if (p.sx < SG.W / 2) { if (!mvP) mvP = p; }
       else if (!aimP) aimP = p;
@@ -212,6 +251,7 @@
 
     // ---- move ----
     st.moveStick = mvP ? stickVec(mvP) : null;
+    if (me.dash) { st.moveStick = null; return; }   // the dash steers itself
     var vx = 0, vy = 0;
     if (st.moveStick && st.moveStick.mag > DEAD) {
       vx = st.moveStick.dx / STICK_R;
@@ -274,9 +314,38 @@
     }
   }
 
+  function superRect() { return { x: SG.W - 120, y: SG.H - 124, w: 98, h: 98 }; }
+  function inRect(x, y, r) { return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h; }
+
+  function addCharge(amount) {
+    var me = st.me;
+    if (!me) return;
+    var was = me.charge;
+    me.charge = Math.min(1, me.charge + amount);
+    if (was < 1 && me.charge >= 1) {
+      SG.audio.play('power');
+      say('SUPER READY', SUPERS[st.kit.id].color);
+    }
+  }
+
+  function armSuper() {
+    var me = st.me;
+    if (!me || me.charge < 1) { SG.audio.play('back'); return; }
+    me.superArmed = !me.superArmed;
+    SG.audio.play(me.superArmed ? 'select' : 'tap');
+  }
+
   // `ang` null means auto-aim at whoever is closest.
   function fire(ang) {
     var me = st.me;
+    if (me.superArmed && me.charge >= 1) {
+      if (ang === null) {
+        var target = nearestBot();
+        ang = target ? Math.atan2(target.y - me.y, target.x - me.x) : 0;
+      }
+      fireSuper(ang);
+      return;
+    }
     if (me.ammo < 1) { SG.audio.play('back'); return; }
     if (ang === null) {
       var near = nearestBot();
@@ -301,6 +370,95 @@
     me.shotT = 0;
     me.flash = 0.12;
     SG.audio.play('pop');
+  }
+
+  /* Three very different jobs: a panic button for being surrounded, a
+     way in for the short-ranged bruiser, and a reach-plus-lifesteal
+     answer for the one who dies if anything touches him. */
+  function fireSuper(ang) {
+    var me = st.me;
+    var id = st.kit.id;
+    var mult = powerMult('attack');
+    me.charge = 0;
+    me.superArmed = false;
+    me.superFx = 0.55;
+    me.shotT = 0;
+
+    if (id === 'santi') {
+      for (var i = 0; i < 12; i++) {
+        var a = ang + (i / 12) * Math.PI * 2;
+        st.shots.push({
+          x: me.x, y: me.y, mine: true, big: true,
+          vx: Math.cos(a) * 430, vy: Math.sin(a) * 430,
+          life: 560 / 430, dmg: 32 * mult, rot: i,
+        });
+      }
+      SG.audio.play('wingbig');
+      SG.shake(11);
+      SG.burst(sx(me.x), sy(me.y) - 40, 22, {
+        colors: ['#ffb02e', '#fff4e0', '#d9501f'], speedMax: 300, gravity: 120,
+      });
+
+    } else if (id === 'dark') {
+      me.dash = { t: 0, dur: 0.34, ang: ang, hit: [], trail: [] };
+      SG.audio.play('smash');
+      SG.shake(13);
+
+    } else {
+      var len = 1250;
+      var ex = me.x + Math.cos(ang) * len, ey = me.y + Math.sin(ang) * len;
+      st.beams.push({ x0: me.x, y0: me.y, x1: ex, y1: ey, t: 0 });
+      var healed = 0;
+      for (var b = 0; b < st.bots.length; b++) {
+        var bot = st.bots[b];
+        if (bot.hp <= 0) continue;
+        if (segDist(me.x, me.y, ex, ey, bot.x, bot.y) < HIT_R + 8) {
+          bot.hp -= 72 * mult;
+          bot.hurt = 0.22;
+          healed++;
+          SG.burst(sx(bot.x), sy(bot.y) - 46, 12, { colors: ['#fff', '#c9ccd8'], speedMax: 240 });
+          if (bot.hp <= 0) {
+            SG.audio.play('wing');
+            SG.burst(sx(bot.x), sy(bot.y) - 50, 18, { colors: ['#ff6b8a', '#fff'], speedMax: 260, gravity: 180 });
+          }
+        }
+      }
+      // fragile, so the reward for landing it is staying alive
+      if (healed) {
+        me.hp = Math.min(me.maxHp, me.hp + 10 * healed);
+        SG.burst(sx(me.x), sy(me.y) - 50, 10, { colors: ['#4dd47a', '#fff'], speedMax: 160, lift: 80 });
+      }
+      SG.audio.play('power');
+      SG.shake(9);
+    }
+  }
+
+  function updateDash(dt) {
+    var me = st.me, d = me.dash;
+    d.t += dt;
+    d.trail.push({ x: me.x, y: me.y, t: 0 });
+    if (d.trail.length > 7) d.trail.shift();
+    for (var i = 0; i < d.trail.length; i++) d.trail[i].t += dt;
+
+    var step = 1180 * dt;
+    moveEntity(me, Math.cos(d.ang) * step, Math.sin(d.ang) * step);
+    me.phase += dt * 18;
+
+    for (var b = 0; b < st.bots.length; b++) {
+      var bot = st.bots[b];
+      if (bot.hp <= 0 || d.hit.indexOf(bot) >= 0) continue;
+      if (Math.hypot(bot.x - me.x, bot.y - me.y) < HIT_R + 30) {
+        d.hit.push(bot);
+        bot.hp -= 62 * powerMult('attack');
+        bot.hurt = 0.24;
+        // sent flying along the dash
+        moveEntity(bot, Math.cos(d.ang) * 74, Math.sin(d.ang) * 74);
+        SG.shake(9);
+        SG.burst(sx(bot.x), sy(bot.y) - 46, 16, { colors: ['#b46ad0', '#fff', '#ffd400'], speedMax: 280 });
+        SG.audio.play(bot.hp <= 0 ? 'wing' : 'smash');
+      }
+    }
+    if (d.t >= d.dur) me.dash = null;
   }
 
   function stickVec(p) {
@@ -427,6 +585,9 @@
           if (segDist(px, py, s.x, s.y, bot.x, bot.y) < HIT_R) {
             bot.hp -= s.dmg;
             bot.hurt = 0.16;
+            // The super charges off damage dealt, so aggression pays.
+            if (!s.big) addCharge(s.dmg / CHARGE_DMG);
+            if (bot.hp <= 0 && !s.big) addCharge(CHARGE_KILL);
             SG.burst(sx(s.x), sy(s.y) - 46, 6, { colors: ['#ffb02e', '#fff4e0'], speedMax: 180, gravity: 260, rMax: 4, life: 0.4 });
             if (bot.hp <= 0) {
               SG.audio.play('wing');
@@ -475,10 +636,12 @@
     }
 
     drawShots(g);
+    drawBeams(g);
     g.restore();
 
     drawHUD(g);
     drawSticks(g);
+    if (st.phase === 'fight') drawSuperButton(g);
 
     if (st.paused) drawPaused(g);
     if (st.phase === 'won') drawWon(g);
@@ -575,9 +738,28 @@
   function drawMe(g) {
     var me = st.me;
     var x = sx(me.x), y = sy(me.y);
+
+    // afterimages, so a dash reads as a dash and not a teleport
+    if (me.dash) {
+      for (var t = 0; t < me.dash.trail.length; t++) {
+        var tr = me.dash.trail[t];
+        g.save();
+        g.globalAlpha = 0.1 + (t / me.dash.trail.length) * 0.28;
+        SG.art.drawSanti(g, sx(tr.x), sy(tr.y), BODY_H, me.phase - (me.dash.trail.length - t) * 0.4, {
+          face: st.kit.face, shirt: SUPERS.dark.color, boxColor: st.kit.box,
+          boxInk: st.kit.ink, pants: st.kit.pants, skin: st.kit.skin, shoe: st.kit.shoe, run: 1,
+        });
+        g.restore();
+      }
+    }
+
     shadow(g, x, y, 40);
     g.save();
     if (me.hurtT < 0.25 && Math.floor(st.t * 24) % 2 === 0) g.globalAlpha = 0.45;
+    if (me.superFx > 0 || me.dash) {
+      g.shadowColor = SUPERS[st.kit.id].color;
+      g.shadowBlur = 26;
+    }
     SG.art.drawSanti(g, x, y, BODY_H, me.phase, {
       face: st.kit.face, shirt: st.kit.shirt, boxColor: st.kit.box,
       boxInk: st.kit.ink, pants: st.kit.pants,
@@ -651,8 +833,85 @@
     for (var i = 0; i < st.shots.length; i++) {
       var s = st.shots[i];
       var x = sx(s.x), y = sy(s.y);
-      if (s.mine) SG.art.drawWing(g, x, y - 46, 1.05, s.rot);
+      if (s.big) {
+        // storm wings: bigger, spinning, and lit
+        g.save();
+        g.shadowColor = SUPERS.santi.color;
+        g.shadowBlur = 16;
+        SG.art.drawWing(g, x, y - 46, 1.7, s.rot + st.t * 9);
+        g.restore();
+      } else if (s.mine) SG.art.drawWing(g, x, y - 46, 1.05, s.rot);
       else drawHeart(g, x, y - 44, 0.85, Math.sin(s.rot) * 0.3);
+    }
+  }
+
+  function drawBeams(g) {
+    for (var i = 0; i < st.beams.length; i++) {
+      var b = st.beams[i];
+      var k = 1 - b.t / 0.4;
+      var x0 = sx(b.x0), y0 = sy(b.y0) - 46, x1 = sx(b.x1), y1 = sy(b.y1) - 46;
+      g.save();
+      g.lineCap = 'round';
+      g.strokeStyle = 'rgba(20,20,26,' + (k * 0.55) + ')';
+      g.lineWidth = 34 * k;
+      g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,' + k + ')';
+      g.lineWidth = 13 * k;
+      g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,' + (k * 0.8) + ')';
+      g.lineWidth = 4 * k;
+      g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+      g.restore();
+    }
+  }
+
+  /* Charge meter and the button that spends it. Sits clear of the aim
+     thumb's landing zone, and anything starting inside it is excluded
+     from aiming. */
+  function drawSuperButton(g) {
+    var me = st.me;
+    var sp = SUPERS[st.kit.id];
+    var r = superRect();
+    var cx = r.x + r.w / 2, cy = r.y + r.h / 2, rad = r.w / 2;
+    var full = me.charge >= 1;
+    var pulse = full ? 1 + Math.sin(st.t * 6) * 0.05 : 1;
+
+    g.save();
+    g.globalAlpha = full ? 1 : 0.62;
+
+    g.fillStyle = 'rgba(10,8,24,0.6)';
+    g.beginPath(); g.arc(cx, cy, rad * pulse, 0, Math.PI * 2); g.fill();
+
+    // the ring fills as he does damage
+    g.strokeStyle = 'rgba(255,255,255,0.16)';
+    g.lineWidth = 7;
+    g.beginPath(); g.arc(cx, cy, rad - 5, 0, Math.PI * 2); g.stroke();
+    g.strokeStyle = sp.color;
+    g.lineWidth = 7;
+    g.lineCap = 'round';
+    g.beginPath();
+    g.arc(cx, cy, rad - 5, -Math.PI / 2, -Math.PI / 2 + me.charge * Math.PI * 2);
+    g.stroke();
+
+    if (full) {
+      g.shadowColor = sp.color;
+      g.shadowBlur = me.superArmed ? 26 : 14;
+      g.fillStyle = me.superArmed ? sp.color : 'rgba(255,255,255,0.12)';
+      g.beginPath(); g.arc(cx, cy, rad - 15, 0, Math.PI * 2); g.fill();
+      g.shadowBlur = 0;
+    }
+
+    SG.ui.text(g, full ? sp.short : Math.floor(me.charge * 100) + '%', cx, cy,
+      { size: full ? 15 : 14, color: me.superArmed ? '#17120a' : '#fff', shadow: false });
+    if (full && !me.superArmed) {
+      SG.ui.text(g, 'TAP', cx, cy + 18, { size: 10, color: 'rgba(255,255,255,0.6)', shadow: false });
+    }
+    g.restore();
+
+    if (me.superArmed) {
+      SG.ui.text(g, sp.name + ' - AIM AND RELEASE', SG.W / 2, SG.H - 26, {
+        size: 14, color: sp.color, stroke: '#14102a', strokeWidth: 5, shadow: false,
+      });
     }
   }
 
@@ -742,7 +1001,8 @@
       g.fillRect(pr.x + 23, pr.y + 10, 5, 15);
     }
 
-    if (st.round === 1 && st.t < 8 && st.phase === 'fight') {
+    // The armed-super prompt owns the bottom line while it is up.
+    if (st.round === 1 && st.t < 8 && st.phase === 'fight' && !(st.me && st.me.superArmed)) {
       SG.ui.text(g, SG.platform.touch
         ? 'LEFT THUMB MOVES  ·  HOLD RIGHT TO AIM, RELEASE TO SHOOT'
         : 'WASD TO MOVE  ·  HOLD LEFT MOUSE TO AIM, RELEASE TO SHOOT',
@@ -770,7 +1030,7 @@
 
     for (var i = 0; i < KITS.length; i++) {
       var k = KITS[i];
-      var r = { x: x0 + i * (cw + gap), y: 104, w: cw, h: 352 };
+      var r = { x: x0 + i * (cw + gap), y: 82, w: cw, h: 396 };
       var hot = SG.input.tappedRect(r);
 
       g.fillStyle = 'rgba(28,22,58,0.95)';
@@ -797,6 +1057,23 @@
           SG.roundRect(g, r.x + 88 + p * 26, by - 6, 20, 11, 3); g.fill();
         }
       }
+
+      // The super is half of what makes each one different, so it is
+      // on the card rather than a surprise.
+      var sp = SUPERS[k.id];
+      var sy0 = r.y + 350;
+      g.fillStyle = 'rgba(0,0,0,0.32)';
+      SG.roundRect(g, r.x + 12, sy0 - 14, r.w - 24, 40, 9); g.fill();
+      g.strokeStyle = sp.color;
+      g.lineWidth = 1.5;
+      SG.roundRect(g, r.x + 12, sy0 - 14, r.w - 24, 40, 9); g.stroke();
+      SG.ui.text(g, 'SUPER · ' + sp.name, r.x + r.w / 2, sy0 - 1, {
+        size: 11, color: sp.color, shadow: false,
+      });
+      SG.ui.text(g, sp.desc, r.x + r.w / 2, sy0 + 16, {
+        size: 9.5, color: 'rgba(255,255,255,0.55)', weight: '600',
+        font: '"Avenir Next", system-ui, sans-serif', shadow: false,
+      });
 
       if (hot) { st.kit = k; st.phase = 'draftPower'; SG.audio.play('select'); return; }
     }

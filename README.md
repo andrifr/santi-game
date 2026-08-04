@@ -131,6 +131,19 @@ trigger down.
 **He heals** slowly once he's been out of the fight for a few seconds —
 neither shooting nor being hit.
 
+**Every Santi has a different Super**, charged by damage dealt — about
+two and a half Daleys' worth. When the ring fills, tap the button
+(bottom right, or `E`), then aim and release as normal.
+
+| | Super | |
+| --- | --- | --- |
+| **Santi** | WING STORM | twelve wings, every direction at once — for when they've surrounded you |
+| **Dark Santi** | THE LEAN | dash through the pack, heavy damage, sends them flying. The way in for the short-ranged one |
+| **Santi Noir** | NOIR SHOT | pierces the whole arena and **heals him for every Daley it hits** — the fragile one's way of staying alive |
+
+The Super is printed on the draft card, so the choice of Santi decides
+how you fight and not just how hard you hit.
+
 | | Health | Power | Range | Speed |
 | --- | --- | --- | --- | --- |
 | **Santi** | 110 | ●●●○○ | ●●●○○ | ●●●●○ |
@@ -240,9 +253,12 @@ with an edge marker pointing the way when the target is off screen.
 **No two days are the same.** Ten to fourteen jobs are drawn from a
 larger pool and shuffled, so the order changes every morning: hairspray,
 a Supreme tee, microwaved bread and cheese, walking Rue to the tree and
-back, filming a *Santi Can't* video, three chords on the guitar, K3 on
-the speaker, one quick game that is never one game, watering the plant,
-ringing Daley, destroying five wings. Getting up is always first and
+back, filming a *Santi Can't* video, Azizam on the guitar, one quick
+game that is never one game, watering the plant, ringing Daley,
+destroying five wings.
+
+The **speaker** is never a chore — poke it any time and it plays one of
+four tunes, cycling, while the cones thump and notes come off it. Getting up is always first and
 going to bed always last; anything that has to stay in order — grab the
 bread *then* microwave it, leash *then* door *then* tree *then* home —
 moves around as a block. Each job pays 40 wings.

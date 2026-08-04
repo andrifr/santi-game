@@ -179,7 +179,6 @@
     { id: 'video',  title: "SANTI CAN'T",       hint: 'Film a video',              target: 'camera' },
     { id: 'wings',  title: 'CHICKEN WINGS',     hint: 'Destroy them',              target: 'wings' },
     { id: 'call',   title: 'CALL DALEY',        hint: 'Give her a ring',           target: 'phone' },
-    { id: 'k3',     title: 'K3',                hint: 'Put K3 on. Loud.',          target: 'stereo' },
     { id: 'game',   title: 'ONE QUICK GAME',    hint: 'It is never one game',      target: 'console' },
     { id: 'plant',  title: 'THE PLANT',         hint: 'Water it before it dies',   target: 'plant' },
     { id: 'guitar', title: 'AZIZAM',            hint: 'The one song he knows',     target: 'guitar' },
@@ -193,7 +192,7 @@
     ['grab', 'nuke'],
     ['leash', 'out', 'tree', 'home'],
     ['hair'], ['shirt'], ['video'], ['wings'], ['call'],
-    ['k3'], ['game'], ['plant'], ['guitar'],
+    ['game'], ['plant'], ['guitar'],
   ];
   var ALWAYS = ['hair', 'wings'];      // the two he would never skip
   var JOBS_PER_DAY = 8;                // blocks between waking and sleeping
@@ -331,6 +330,7 @@
       poster: pickFresh(day, 449, POSTERS),
       rueLines: rshuffle(rngFor(day, 563), RUE_LINES),
       rueSaid: 0,
+      tune: -1, tuneSaid: 0, dancing: 0,
       x: 250, vx: 0, facing: 1, walkPhase: 0,
       targetX: null, pending: null,          // object to use on arrival
       cam: 0,
@@ -395,6 +395,7 @@
     var isTarget = tk && tk.target === o.id;
 
     if (o.id === 'sink') { lookInMirror(); return; }
+    if (o.id === 'stereo') { playStereo(); return; }   // never a chore, always available
 
     if (!isTarget) {
       // Everything is pokeable, it just doesn't move the day along.
@@ -470,10 +471,6 @@
         openOverlay('call', { line: 0, t: 0 });
         break;
 
-      case 'k3':
-        openOverlay('k3', { beats: 0 });
-        break;
-
       case 'game':
         openOverlay('game', { t: 0, stage: 0 });
         break;
@@ -531,6 +528,31 @@
     }
   }
 
+  /* The speaker. Original bouncy tunes written as note numbers - the
+     whole game's audio is synthesized and nothing sampled ships here. */
+  var TUNES = [
+    [[4, 1], [4, 1], [7, 1], [9, 1], [7, 2], [4, 2], [2, 1], [4, 1], [5, 2], [4, 2]],
+    [[0, 1], [4, 1], [7, 1], [12, 2], [11, 1], [9, 1], [7, 2], [4, 1], [5, 1], [7, 3]],
+    [[9, 1], [7, 1], [5, 1], [4, 1], [5, 1], [7, 1], [9, 2], [11, 1], [12, 3]],
+    [[7, 1], [7, 1], [9, 1], [7, 1], [4, 2], [2, 1], [4, 1], [7, 2], [4, 2]],
+  ];
+
+  var STEREO_LINES = [
+    'Full volume. Correct volume.',
+    'He knows every word. Every single word.',
+    'The neighbours have stopped complaining. They gave up.',
+    'This one is the good one.',
+    'Daley says he sings it wrong. He does not.',
+    'Dance moves included, free of charge.',
+  ];
+
+  function playStereo() {
+    st.tune = (st.tune + 1) % TUNES.length;
+    st.dancing = 2.6;
+    SG.audio.melody(TUNES[st.tune], { beat: 0.17, vol: 0.16 });
+    say(STEREO_LINES[st.tuneSaid++ % STEREO_LINES.length]);
+  }
+
   function openOverlay(name, data) {
     st.overlay = name;
     st.ov = data || {};
@@ -551,6 +573,7 @@
     if (st.bubble) { st.bubbleT += dt; if (st.bubbleT > 3) st.bubble = null; }
     if (st.flash > 0) st.flash -= dt;
     if (st.mirrorScare > 0) st.mirrorScare -= dt;
+    if (st.dancing > 0) st.dancing -= dt;
 
     if (st.paused) { handlePauseTaps(); return; }
 
@@ -694,13 +717,6 @@
         }
         break;
 
-      case 'k3':
-        if (SG.input.takeTap()) {
-          o.beats++;
-          SG.audio.play(o.beats % 2 ? 'point' : 'wing');
-          if (o.beats >= 4) { say(SG.pick(['Every word. Every time.', 'He knows the dance too.', 'Neighbours: informed.'])); closeOverlay(true); }
-        }
-        break;
 
       case 'game':
         o.t += dt;
@@ -941,7 +957,20 @@
         SG.roundRect(g, x - 26, base - 96, 52, 96, 7); g.fill();
         g.strokeStyle = 'rgba(255,255,255,0.16)'; g.lineWidth = 2;
         SG.roundRect(g, x - 26, base - 96, 52, 96, 7); g.stroke();
-        var thump = 1 + Math.sin(st.t * 9) * 0.07;
+        // thumps harder while a tune is actually going
+        var live = st.dancing > 0;
+        var thump = 1 + Math.sin(st.t * (live ? 17 : 9)) * (live ? 0.16 : 0.07);
+        if (live) {
+          for (var nb = 0; nb < 3; nb++) {
+            var nba = st.t * 4 + nb * 2.1;
+            g.save();
+            g.globalAlpha = 0.35 + Math.sin(nba) * 0.3;
+            SG.ui.text(g, '♪', x + 30 + nb * 16, base - 110 + Math.sin(nba) * 16, {
+              size: 17, color: '#ff8ad8', shadow: false,
+            });
+            g.restore();
+          }
+        }
         g.fillStyle = '#141018';
         g.beginPath(); g.arc(x, base - 66, 17 * thump, 0, Math.PI * 2); g.fill();
         g.fillStyle = '#4a4258';
@@ -1525,24 +1554,6 @@
         break;
       }
 
-      case 'k3': {
-        SG.ui.panel(g, CX - 230, 110, 460, 300);
-        SG.ui.text(g, 'K3', CX, 158, { size: 34, color: '#ff8ad8', shadow: false });
-        var bounce = Math.abs(Math.sin(st.t * 7)) * 10;
-        nightFace(g, 'k3', CX, 250 - bounce, 128);
-        for (var nt = 0; nt < 4; nt++) {
-          var na = st.t * 3 + nt * 1.6;
-          g.globalAlpha = 0.5 + Math.sin(na) * 0.3;
-          SG.ui.text(g, '♪', CX - 150 + nt * 100, 200 + Math.sin(na) * 22, {
-            size: 24, color: '#ff8ad8', shadow: false,
-          });
-          g.globalAlpha = 1;
-        }
-        SG.ui.text(g, 'TAP TO SING ALONG   ' + o.beats + ' / 4', CX, 366, {
-          size: 16, color: '#fff', shadow: false,
-        });
-        break;
-      }
 
       case 'game': {
         SG.ui.panel(g, CX - 240, 110, 480, 300);

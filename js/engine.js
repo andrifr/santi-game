@@ -340,6 +340,28 @@
     src.start(t);
   }
 
+  /* A short melody: [[semitonesFromA4, beats], ...]. Everything else in
+     here is a one-shot cue, so anything wanting an actual tune needs
+     this. Original tunes only - no ripped audio ships in this project. */
+  audio.melody = function (seq, o) {
+    if (!audio.ready || !audio.enabled) return;
+    o = o || {};
+    var beat = o.beat || 0.16;
+    var t = 0;
+    seq.forEach(function (n) {
+      var semis = n[0], beats = n[1];
+      if (semis !== null) {
+        setTimeout(function () {
+          tone(440 * Math.pow(2, semis / 12), beats * beat * 0.9, {
+            type: o.type || 'triangle', vol: o.vol || 0.17,
+          });
+        }, t * 1000);
+      }
+      t += beats * beat;
+    });
+    return t;
+  };
+
   audio.play = function (name) {
     if (!audio.ready || !audio.enabled) return;
     switch (name) {
