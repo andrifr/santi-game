@@ -148,13 +148,18 @@ Gargamel. Four levels: the village, the wood, the gate, and the lair.
 
 | Action | Phone | Desktop |
 | ------ | ----- | ------- |
-| Run | the ◀ ▶ pads, bottom left | ← → / A D |
+| Run | anywhere in the bottom-left corner | ← → / A D |
 | Jump | anywhere on the right half | ↑ / W / Space |
 | Jump higher | hold it | hold it |
 
 **Hold to jump higher.** A tap clears 66px, a full hold 132px — a tap
-gets you over a gnap, a hold gets you onto a ledge. Both thumbs work at
-once, and a thumb can slide from one arrow to the other without lifting.
+gets you over a gnap, a hold gets you onto a ledge. Nothing in the game
+*requires* the hold, including Gargamel.
+
+The whole bottom-left corner steers, split down the middle, not just the
+two drawn arrows. Both thumbs work at once and a thumb can slide from
+one side to the other without lifting — a dead zone between the arrows
+stops a player dead and reads as the game being broken.
 
 **Stomp what you can, dodge what you can't.** Gnaps — Gargamel's hooded
 little helpers — die under your feet and pay out. **Azrael never dies**:
@@ -162,9 +167,15 @@ land on him and he sits down stunned for two seconds, walk into him and
 it costs a heart. He charges when he sees you, but never faster than you
 can run.
 
-Three hearts per level, refilled at the start of each one. Fall down a
+Four hearts per level, refilled at the start of each one. Fall down a
 hole and you lose one and get put back on solid ground with room to run,
-rather than at the top of the level.
+rather than at the top of the level. The box that hurts you is always
+narrower than the enemy you can see — losing a heart to a gap you could
+see daylight through is the worst feeling a platformer has.
+
+The villages are inhabited. Smurfs hammer, dig, fish, wave and dance
+outside their houses in the background, and Gargamel has one of them in
+a cage in his lair — beat him and the door comes off its hinges.
 
 Levels are built from hand-made chunks laid end to end, so no two runs
 are the same shape, but every chunk starts and ends on solid ground —
@@ -172,9 +183,14 @@ there is no join that can't be jumped. **Sarsaparilla** pays 4 wings a
 leaf, a cleared level 80, and Gargamel 260.
 
 **The lair.** He throws potions that leave acid where they land, and
-summons gnaps two at a time. He can't be touched on his feet — but every
-so often he leaps at you, lands hard and stands there dazed with his
-head down. That is the window: three stomps and he's finished.
+summons gnaps. He can't be touched on his feet — but every so often he
+leaps at you, lands hard and collapses onto his knees with his head
+down, and the acid on the floor fizzles out with him. That is the
+window, and the game says so out loud. Three stomps and he's finished.
+
+His dazed head sits under a **tapped** jump, not a held one. Held, he
+was unkillable for anyone who doesn't know to hold the button — which
+is not difficulty, it's a wall.
 
 **Santi Simulator**
 

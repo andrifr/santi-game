@@ -25,11 +25,17 @@
      620^2 / (2*1450) = 132px held, 620^2 / (2*2900) = 66px tapped -
      so a tap clears a gnap and a full hold clears a 96px block. */
   var GRAV = 2900, GRAV_HOLD = 1450, MAX_FALL = 1150;
-  var RUN = 300, ACCEL = 2600, AIR_ACCEL = 1800, FRICTION = 3200;
+  var RUN = 300, ACCEL = 3400, AIR_ACCEL = 2100, FRICTION = 3200;
+  var TURN = 7200;            // reversing skids round instead of coasting
   var JUMP_V = 620, STOMP_V = 700, SPRING_V = 1150;
   var COYOTE = 0.1, BUFFER = 0.13;
 
-  var HEARTS = 3;
+  var HEARTS = 4;
+
+  /* Gargamel's head while he is dazed. It has to sit under a TAPPED
+     jump (66px), not a fully held one - held at 96px he was literally
+     unkillable for anyone who taps the button. */
+  var DIZZY_H = 58;
   var GEM_WINGS = 4, CLEAR_WINGS = 80, BOSS_WINGS = 260;
   var GEM_PTS = 100, STOMP_PTS = 150, CLEAR_PTS = 500, BOSS_PTS = 2500;
 
@@ -44,14 +50,14 @@
       far: '#3f7f5c', far2: '#356f50',
       mid: '#47935f', midDark: '#3a7c4f',
       grass: '#63c25e', grassLite: '#86dd80', earth: '#7d5735', earthDark: '#5c3f26',
-      deep: '#25341f', prop: 'house', clouds: 7,
+      deep: '#25341f', prop: 'house', clouds: 7, folk: true,
     },
     forest: {
       sky: ['#14315e', '#2b6d84', '#7fc59a'],
       far: '#1d4a48', far2: '#17403f',
       mid: '#255c4e', midDark: '#1d4c41',
       grass: '#49a862', grassLite: '#69c77c', earth: '#5d4630', earthDark: '#42311f',
-      deep: '#12241f', canopy: '#2f8a63', prop: 'tree', clouds: 3, fireflies: true,
+      deep: '#12241f', canopy: '#2f8a63', prop: 'tree', clouds: 3, fireflies: true, folk: true,
     },
     castle: {
       sky: ['#221540', '#4d2555', '#96455f'],
@@ -84,15 +90,17 @@
     if (kind === 'azrael') {
       // His dash stays under RUN. A cat that is simply faster than you
       // leaves nothing to do about him but land a pixel-perfect stomp.
-      return { kind: 'azrael', x: x, y: y, w: 76, h: 48, dir: -1,
+      // w is the stomp width, hitW the (narrower) width that hurts -
+      // Azrael's tail must not cost a heart.
+      return { kind: 'azrael', x: x, y: y, w: 76, hitW: 50, h: 48, dir: -1,
                speed: 78 * fast, dash: Math.min(268, 250 * fast), vy: 0, stun: 0, dead: 0,
                phase: Math.random() * 6.28, ground: true };
     }
     if (kind === 'bat') {
-      return { kind: 'bat', x: x, x0: x, y: y, y0: y, w: 40, h: 30, dir: -1,
+      return { kind: 'bat', x: x, x0: x, y: y, y0: y, w: 40, hitW: 26, h: 30, dir: -1,
                speed: 74 * fast, vy: 0, dead: 0, phase: Math.random() * 6.28, fly: true };
     }
-    return { kind: 'gnap', x: x, y: y, w: 38, h: 46, dir: -1,
+    return { kind: 'gnap', x: x, y: y, w: 38, hitW: 26, h: 46, dir: -1,
              speed: 62 * fast, vy: 0, dead: 0, phase: Math.random() * 6.28, ground: true };
   }
 
@@ -206,21 +214,30 @@
       return 700;
     },
 
+    /* The one purely timed crossing in the game, so it gets a static
+       toadstool on the far side: miss the moving one and you can still
+       recover instead of dropping straight down a hole. */
     ride: function (b, x) {
       b.ground(x, 200);
-      b.mover(x + 250, BASE_Y - 84, 140, 240, 92);
-      b.ground(x + 620, 180);
+      b.mover(x + 240, BASE_Y - 84, 150, 170, 74);
+      b.plat(x + 520, BASE_Y - 84, 110);
+      b.ground(x + 660, 180);
       b.row(x + 300, BASE_Y - 192, 3);
-      return 800;
+      return 840;
     },
 
+    /* Nothing standing on the floor may be taller than a full-hold jump.
+       The old second tower was 170 high against a 132 jump: drop into
+       the gap between the two and the only way on was to turn round and
+       climb back over the first one. That reads as being stuck. */
     towers: function (b, x, d) {
       b.ground(x, 720);
-      b.block(x + 160, BASE_Y - 92, 120, 92);
-      b.block(x + 400, BASE_Y - 170, 120, 170);
-      b.gem(x + 220, BASE_Y - 142);
-      b.row(x + 420, BASE_Y - 220, 3, 40);
-      if (d > 1) b.foe('gnap', x + 620, BASE_Y);
+      b.block(x + 160, BASE_Y - 84, 120, 84);
+      b.block(x + 330, BASE_Y - 96, 120, 96);
+      b.plat(x + 500, BASE_Y - 186, 150);
+      b.gem(x + 220, BASE_Y - 134);
+      b.row(x + 520, BASE_Y - 234, 3, 40);
+      if (d > 1) b.foe('gnap', x + 640, BASE_Y);
       return 720;
     },
 
@@ -305,6 +322,27 @@
         props.push({ kind: th.prop, x: px, s: SG.rand(0.75, 1.25), flip: Math.random() < 0.5 });
       }
     }
+    /* Village life. Purely background - they stand on the parallax band
+       with the houses, never collide, and are the actual smurfs in a
+       game whose hero is only dressed as one. */
+    var folk = [];
+    if (th.folk) {
+      var jobs = ['wave', 'hammer', 'dig', 'sit', 'dance', 'fish'];
+      for (var fi = 0; fi < props.length; fi++) {
+        if (Math.random() < 0.35) continue;
+        var n = SG.randInt(1, 2);
+        for (var k = 0; k < n; k++) {
+          folk.push({
+            x: props[fi].x + SG.rand(-120, 130),
+            job: SG.pick(jobs),
+            s: SG.rand(0.85, 1.1),
+            phase: Math.random() * 6.28,
+            flip: Math.random() < 0.5,
+          });
+        }
+      }
+    }
+
     var clouds = [];
     for (var c = 0; c < th.clouds; c++) {
       clouds.push({ x: Math.random() * (width + 600), y: SG.rand(40, 190), s: SG.rand(0.6, 1.4) });
@@ -318,7 +356,7 @@
       name: L.name, theme: L.theme, th: th, boss: !!L.boss,
       width: width, flagX: flagX,
       solids: b.solids, gems: b.gems, foes: b.foes, springs: b.springs, movers: b.movers,
-      props: props, clouds: clouds, hills: hills,
+      props: props, clouds: clouds, hills: hills, folk: folk,
     };
   }
 
@@ -367,9 +405,16 @@
   // Left of the shell's fullscreen button, which is fixed to the very
   // corner of the page and would swallow taps meant for this.
   function pauseRect() { return { x: SG.W - 106, y: 12, w: 40, h: 34 }; }
-  function padLeft() { return { x: 26, y: SG.H - 104, w: 84, h: 84 }; }
-  function padRight() { return { x: 122, y: SG.H - 104, w: 84, h: 84 }; }
-  function padJump() { return { x: SG.W - 136, y: SG.H - 116, w: 104, h: 104 }; }
+  function padLeft() { return { x: 16, y: SG.H - 116, w: 98, h: 98 }; }
+  function padRight() { return { x: 124, y: SG.H - 116, w: 98, h: 98 }; }
+  function padJump() { return { x: SG.W - 142, y: SG.H - 122, w: 112, h: 112 }; }
+
+  /* The whole bottom-left corner steers, split down the middle. The
+     arrows are only where the corner is drawn - a thumb that drifted a
+     few pixels off a button used to fall into a dead zone and stop him
+     dead, which is what "gets stuck" and "not sensitive enough" were. */
+  function padZone() { return { x: 0, y: SG.H - 196, w: 330, h: 196 }; }
+  var PAD_SPLIT = 120;
 
   function inRect(x, y, r) { return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h; }
 
@@ -382,22 +427,24 @@
     var right = !!(k.KeyD || k.ArrowRight);
     var jump = !!(k.Space || k.KeyW || k.ArrowUp);
 
-    var pr = pauseRect(), lr = padLeft(), rr = padRight();
+    var pr = pauseRect(), zone = padZone();
 
     for (var id in SG.input.pointers) {
       var p = SG.input.pointers[id];
       // A finger that landed on pause never steers or jumps.
       if (inRect(p.sx, p.sy, pr)) continue;
-      // Tested against the CURRENT position, so a thumb can slide from
-      // one arrow to the other without lifting.
-      if (inRect(p.x, p.y, lr)) { left = true; continue; }
-      if (inRect(p.x, p.y, rr)) { right = true; continue; }
+      // Tested against the CURRENT position, so a thumb slides from one
+      // side to the other without lifting.
+      if (inRect(p.x, p.y, zone)) {
+        if (p.x < PAD_SPLIT) left = true; else right = true;
+        continue;
+      }
       if (p.x > SG.W * 0.5) { jump = true; continue; }
       // Anywhere else on the left half still steers, relative to where
       // the finger landed.
       var dx = p.x - p.sx;
-      if (dx < -16) left = true;
-      else if (dx > 16) right = true;
+      if (dx < -10) left = true;
+      else if (dx > 10) right = true;
     }
 
     // A tap so brief that no frame saw the finger down still jumps.
@@ -578,7 +625,9 @@
 
     var want = (st.right ? 1 : 0) - (st.left ? 1 : 0);
     if (want) {
-      p.vx += want * (p.grounded ? ACCEL : AIR_ACCEL) * dt;
+      var acc = p.grounded ? ACCEL : AIR_ACCEL;
+      if (want * p.vx < 0) acc = TURN;          // asked for the other way
+      p.vx += want * acc * dt;
       p.facing = want;
     } else if (p.grounded) {
       var drop = FRICTION * dt;
@@ -715,9 +764,13 @@
         // Turn at a wall or a ledge, but only with both feet down -
         // mid-air the probe below finds nothing and would flip him
         // every single frame.
+        // Probe at the feet, not below them: groundBelow looks in a band
+        // starting 2px above what it is given, so `f.y + 4` missed the
+        // floor the foe was standing on and flipped him every frame. They
+        // vibrated on the spot instead of ever patrolling.
         if (landed) {
           var ahead = f.x + f.dir * (f.w / 2 + 8);
-          if (!groundBelow(ahead, f.y + 4) || wallAt(ahead, f.y)) f.dir *= -1;
+          if (!groundBelow(ahead, f.y) || wallAt(ahead, f.y)) f.dir *= -1;
         }
         if (f.y > DEATH_Y) f.dead = 0.01;
         f.phase += dt * 7;
@@ -731,10 +784,12 @@
      fall past a gnap's shoulder reads as a side hit. */
   function touchFoe(f, dt) {
     var p = st.p;
-    if (Math.abs(p.x - f.x) > PW / 2 + f.w / 2) return;
+    var dx = Math.abs(p.x - f.x);
+    if (dx > PW / 2 + f.w / 2) return;
     if (p.y < f.y - f.h || p.y - PBH > f.y) return;
 
-    var fromAbove = p.vy > 40 && p.prevY <= f.y - f.h + 16;
+    // Coming down on anything above his waist is a stomp.
+    var fromAbove = p.vy > 0 && p.prevY <= f.y - f.h * 0.45;
     if (fromAbove) {
       bounce(p, STOMP_V);
       if (f.kind === 'azrael') {
@@ -752,6 +807,10 @@
       return;
     }
     if (f.kind === 'azrael' && f.stun > 0) return;
+    // The hurt box is narrower than the drawing, never wider. Losing a
+    // heart to a gap you can see daylight through is the worst feeling
+    // a platformer has.
+    if (dx > PW / 2 + f.hitW / 2) return;
     hurt();
   }
 
@@ -859,6 +918,11 @@
             G.air = false;
             G.t = 0;
             G.state = 'dizzy';
+            // His acid fizzles out when he goes down, so the window is a
+            // real one rather than a dash across a floor covered in his
+            // own potions - which is what was actually killing people.
+            st.puddles.length = 0;
+            st.shots.length = 0;
             SG.shake(14);
             SG.audio.play('crash');
             SG.burst(G.x, BASE_Y, 20, { colors: ['#8a7f6a', '#c9bda6'], speedMax: 300, gravity: 900 });
@@ -867,7 +931,7 @@
         break;
 
       case 'dizzy':
-        if (G.t > 2.4) { G.t = 0; G.state = 'walk'; }
+        if (G.t > 3.2) { G.t = 0; G.state = 'walk'; }
         break;
     }
 
@@ -876,10 +940,10 @@
     // A pair of gnaps at a time, so the arena is never empty.
     G.spawnT -= dt;
     if (G.spawnT <= 0) {
-      G.spawnT = 7;
+      G.spawnT = 9;
       var alive = 0;
       for (var i = 0; i < st.lv.foes.length; i++) if (!st.lv.foes[i].dead) alive++;
-      if (alive < 2) {
+      if (alive < 1) {
         // Away from the PLAYER, not away from Gargamel - the far corner
         // from him is where the player is standing at the start.
         st.lv.foes.push(makeFoe('gnap', p.x < st.lv.width / 2 ? st.lv.width - 120 : 120, BASE_Y, 2));
@@ -888,8 +952,8 @@
     }
 
     // contact
-    var head = BASE_Y - (G.state === 'dizzy' ? 96 : 168);
-    var halfW = G.state === 'dizzy' ? 58 : 46;
+    var head = BASE_Y - (G.state === 'dizzy' ? DIZZY_H : 168);
+    var halfW = G.state === 'dizzy' ? 62 : 46;
     if (Math.abs(p.x - G.x) < PW / 2 + halfW && p.y > head && p.y - PBH < BASE_Y) {
       if (G.state === 'dizzy' && p.vy > 40 && p.prevY <= head + 22) {
         G.hp--;
@@ -945,8 +1009,8 @@
     for (var j = st.puddles.length - 1; j >= 0; j--) {
       var q = st.puddles[j];
       q.t += dt;
-      if (q.t > 3.6) { st.puddles.splice(j, 1); continue; }
-      if (Math.abs(q.x - p.x) < 46 && p.y > BASE_Y - 26 && p.y <= BASE_Y + 4) hurt();
+      if (q.t > 2.4) { st.puddles.splice(j, 1); continue; }
+      if (Math.abs(q.x - p.x) < 32 && p.y > BASE_Y - 26 && p.y <= BASE_Y + 4) hurt();
     }
   }
 
@@ -1041,6 +1105,12 @@
       if (px < -260 || px > SG.W + 260) continue;
       drawProp(g, pr, px, BASE_Y - 14, th);
     }
+    for (var fk = 0; fk < st.lv.folk.length; fk++) {
+      var fo = st.lv.folk[fk];
+      var fx = fo.x - mx;
+      if (fx < -60 || fx > SG.W + 60) continue;
+      drawSmurf(g, fx, BASE_Y - 14, fo.s, fo.job, st.t + fo.phase, fo.flip);
+    }
     g.fillStyle = th.midDark;
     g.fillRect(0, BASE_Y - 14, SG.W, 14);
     drawVoid(g, th);
@@ -1090,6 +1160,41 @@
       g.ellipse(tx, 146, 6, flick, 0, 0, Math.PI * 2);
       g.fill();
     }
+    /* The reason any of this is happening: Gargamel has one of them in a
+       cage. Beat him and the door swings open. */
+    var cgx = 250 - cam;
+    if (cgx > -120 && cgx < SG.W + 120) {
+      var freed = st.phase === 'win';
+      g.save();
+      g.translate(cgx, BASE_Y);
+      drawSmurf(g, freed ? 16 : 0, -6, 0.92, freed ? 'dance' : 'wave', st.t * (freed ? 1.7 : 1), false);
+      g.fillStyle = '#6b6472';
+      g.fillRect(-38, -72, 76, 5);
+      g.fillRect(-38, -6, 76, 6);
+      g.strokeStyle = '#7d7686';
+      g.lineWidth = 2.5;
+      for (var bar = 0; bar <= 4; bar++) {
+        var bxx = -36 + bar * 18;
+        if (freed && bxx > -10) continue;       // the door is off its hinges
+        g.beginPath();
+        g.moveTo(bxx, -68); g.lineTo(bxx, -6);
+        g.stroke();
+      }
+      if (freed) {
+        g.save();
+        g.translate(26, -68);
+        g.rotate(0.9);
+        g.strokeStyle = '#7d7686';
+        for (var d2 = 0; d2 <= 2; d2++) {
+          g.beginPath();
+          g.moveTo(d2 * 11, 0); g.lineTo(d2 * 11, 60);
+          g.stroke();
+        }
+        g.restore();
+      }
+      g.restore();
+    }
+
     // cauldron
     var kx = 1400 - cam;
     if (kx > -160 && kx < SG.W + 160) {
@@ -1126,6 +1231,121 @@
     g.arc(x, y - r * 0.15, r * 0.75, 0, Math.PI * 2);
     g.arc(x + r * 0.65, y + r * 0.05, r * 0.5, 0, Math.PI * 2);
     g.fill();
+  }
+
+  /* A villager: blue, white cap, white trousers, about a third of
+     Santi's height. `job` picks the idle. Background only. */
+  function drawSmurf(g, x, base, s, job, t, flip) {
+    var skin = '#4bb2ec', skinDark = '#2f93cc';
+    var bob = Math.sin(t * 2.2) * 1.6;
+    var swing = Math.sin(t * 3.4);
+
+    g.save();
+    g.translate(x, base);
+    g.scale(flip ? -s : s, s);
+
+    if (job === 'sit' || job === 'fish') g.translate(0, 5);
+
+    // trousers + feet
+    g.fillStyle = '#f2f6ff';
+    if (job === 'sit' || job === 'fish') {
+      SG.roundRect(g, -8, -11, 18, 9, 4); g.fill();
+      SG.roundRect(g, 6, -8, 12, 6, 3); g.fill();
+    } else {
+      var stride = job === 'dance' ? Math.abs(swing) * 3 : 0;
+      SG.roundRect(g, -8 - stride, -12, 8, 12, 3.5); g.fill();
+      SG.roundRect(g, 1 + stride, -12, 8, 12, 3.5); g.fill();
+    }
+
+    // body
+    g.fillStyle = skin;
+    g.beginPath();
+    g.ellipse(0, -19 + bob, 9.5, 9, 0, 0, Math.PI * 2);
+    g.fill();
+
+    // arms
+    g.strokeStyle = skin;
+    g.lineWidth = 4;
+    g.lineCap = 'round';
+    g.beginPath();
+    if (job === 'wave') {
+      g.moveTo(-7, -21 + bob); g.lineTo(-12, -15 + bob);
+      g.moveTo(7, -21 + bob); g.lineTo(13, -32 + bob + swing * 3);
+    } else if (job === 'hammer') {
+      g.moveTo(-7, -21 + bob); g.lineTo(-12, -16 + bob);
+      g.moveTo(7, -21 + bob); g.lineTo(14, -26 + Math.abs(swing) * 9 + bob);
+    } else if (job === 'dig') {
+      g.moveTo(-7, -20 + bob); g.lineTo(-13, -12 + swing * 3 + bob);
+      g.moveTo(7, -21 + bob); g.lineTo(11, -16 + swing * 3 + bob);
+    } else if (job === 'dance') {
+      g.moveTo(-7, -21 + bob); g.lineTo(-13, -31 + bob - swing * 3);
+      g.moveTo(7, -21 + bob); g.lineTo(13, -31 + bob + swing * 3);
+    } else if (job === 'fish') {
+      g.moveTo(-6, -18 + bob); g.lineTo(-11, -14 + bob);
+      g.moveTo(6, -19 + bob); g.lineTo(13, -24 + bob);
+    } else {
+      g.moveTo(-7, -21 + bob); g.lineTo(-12, -14 + bob + swing);
+      g.moveTo(7, -21 + bob); g.lineTo(12, -14 + bob - swing);
+    }
+    g.stroke();
+
+    // tools
+    if (job === 'hammer') {
+      g.strokeStyle = '#8a5a2c';
+      g.lineWidth = 2.4;
+      var hy = -26 + Math.abs(swing) * 9 + bob;
+      g.beginPath(); g.moveTo(14, hy); g.lineTo(21, hy - 6); g.stroke();
+      g.fillStyle = '#9aa2b4';
+      SG.roundRect(g, 19, hy - 11, 8, 6, 1.5); g.fill();
+    } else if (job === 'dig') {
+      g.strokeStyle = '#8a5a2c';
+      g.lineWidth = 2.4;
+      g.beginPath(); g.moveTo(11, -16 + swing * 3 + bob); g.lineTo(19, -4 + swing * 3 + bob); g.stroke();
+      g.fillStyle = '#9aa2b4';
+      g.beginPath();
+      g.ellipse(20, -2 + swing * 3 + bob, 4, 5, -0.5, 0, Math.PI * 2);
+      g.fill();
+    } else if (job === 'fish') {
+      g.strokeStyle = '#8a5a2c';
+      g.lineWidth = 2;
+      g.beginPath(); g.moveTo(13, -24 + bob); g.lineTo(34, -40 + bob); g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,0.5)';
+      g.lineWidth = 1;
+      g.beginPath(); g.moveTo(34, -40 + bob); g.lineTo(36, -12 + bob); g.stroke();
+    }
+
+    // head
+    g.fillStyle = skin;
+    g.beginPath();
+    g.arc(0, -32 + bob, 8.5, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = skinDark;
+    g.beginPath();
+    g.ellipse(7, -31 + bob, 3.4, 2.8, -0.3, 0, Math.PI * 2);   // nose
+    g.fill();
+    g.fillStyle = '#141a2a';
+    g.beginPath(); g.arc(1.5, -34 + bob, 1.3, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(5.5, -34 + bob, 1.3, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#1d3550';
+    g.lineWidth = 1.2;
+    g.beginPath();
+    g.arc(3.5, -29 + bob, 2.6, 0.15, Math.PI - 0.15);
+    g.stroke();
+
+    // the cap
+    g.fillStyle = '#ffffff';
+    g.beginPath();
+    g.moveTo(-9, -38 + bob);
+    g.quadraticCurveTo(-9.5, -47 + bob, -2, -50 + bob);
+    g.quadraticCurveTo(6, -53 + bob, 8, -46 + bob);
+    g.quadraticCurveTo(6, -43 + bob, 9, -38 + bob);
+    g.closePath();
+    g.fill();
+    g.fillStyle = '#eef3ff';
+    SG.roundRect(g, -9.5, -40 + bob, 19, 4, 2);
+    g.fill();
+
+    g.restore();
   }
 
   function drawProp(g, pr, x, base, th) {
@@ -1375,14 +1595,15 @@
       var q = st.puddles[i];
       var x = q.x - cam;
       if (x < -80 || x > SG.W + 80) continue;
-      var k = q.t > 2.9 ? (Math.floor(q.t * 12) % 2 ? 0.25 : 0.7) : 0.7;
+      // drawn at the width that actually hurts, no wider
+      var k = q.t > 1.7 ? (Math.floor(q.t * 12) % 2 ? 0.25 : 0.7) : 0.7;
       g.fillStyle = 'rgba(77,212,122,' + k + ')';
       g.beginPath();
-      g.ellipse(x, BASE_Y + 2, 46, 9, 0, 0, Math.PI * 2);
+      g.ellipse(x, BASE_Y + 2, 32, 8, 0, 0, Math.PI * 2);
       g.fill();
       g.fillStyle = 'rgba(200,255,160,' + (k * 0.5) + ')';
       g.beginPath();
-      g.ellipse(x - 8, BASE_Y - 1, 18, 4, 0, 0, Math.PI * 2);
+      g.ellipse(x - 6, BASE_Y - 1, 13, 3.5, 0, 0, Math.PI * 2);
       g.fill();
     }
   }
@@ -1637,7 +1858,7 @@
     var x = G.x - cam;
     var dizzy = G.state === 'dizzy';
     var crouch = G.state === 'slam' && !G.air;
-    var h = dizzy ? 96 : 168;
+    var h = dizzy ? DIZZY_H : 168;
 
     shadow(g, x, BASE_Y, 44);
     g.save();
@@ -1652,7 +1873,7 @@
 
     /* Dark robe on a dark lair needs a rim light and lighter folds, or
        he reads as a hole in the background with a head floating over it. */
-    var robeTop = -(h - 30);
+    var robeTop = -(h - (dizzy ? 18 : 30));
     g.fillStyle = '#2c2442';
     g.strokeStyle = 'rgba(186,176,224,0.32)';
     g.lineWidth = 2.5;
@@ -1690,7 +1911,8 @@
     g.stroke();
 
     // arm - lighter than the robe so the throw is visible
-    var reach = G.state === 'throw' ? -0.9 : dizzy ? 0.5 : Math.sin(G.phase) * 0.25;
+    // dizzy: hand flopped on the floor, not dangling through it
+    var reach = G.state === 'throw' ? -0.9 : dizzy ? -0.3 : Math.sin(G.phase) * 0.25;
     g.strokeStyle = '#413461';
     g.lineWidth = 14;
     g.beginPath();
@@ -1711,11 +1933,12 @@
     g.ellipse(0, robeTop + 8, 22, 8, 0, 0, Math.PI * 2);
     g.fill();
 
-    // head
-    var hy = robeTop - 20;
+    // head - smaller and lower when he is down on his knees
+    var hr = dizzy ? 19 : 25;
+    var hy = robeTop - (dizzy ? 13 : 20);
     g.fillStyle = '#e8c49a';
     g.beginPath();
-    g.ellipse(1, hy, 25, 28, 0, 0, Math.PI * 2);
+    g.ellipse(1, hy, hr, hr * 1.12, 0, 0, Math.PI * 2);
     g.fill();
     g.strokeStyle = 'rgba(60,40,26,0.45)';
     g.lineWidth = 2;
@@ -1780,6 +2003,24 @@
       g.stroke();
     }
     g.restore();
+
+    // Say what the window is for. Without this the only way to learn
+    // that a dazed Gargamel is the one you can land on is to guess.
+    if (dizzy && !G.down) {
+      var ay = BASE_Y - DIZZY_H - 46 - Math.abs(Math.sin(st.t * 6)) * 10;
+      g.save();
+      g.fillStyle = '#ffd66a';
+      g.beginPath();
+      g.moveTo(x, ay + 22);
+      g.lineTo(x - 13, ay + 2);
+      g.lineTo(x + 13, ay + 2);
+      g.closePath();
+      g.fill();
+      SG.ui.text(g, 'STOMP HIM', x, ay - 12, {
+        size: 17, color: '#ffd66a', stroke: '#2a1030', strokeWidth: 6, shadow: false,
+      });
+      g.restore();
+    }
 
     if (!st.boss.down) {
       var bw = 260, bx = SG.W / 2 - bw / 2;
@@ -1922,10 +2163,14 @@
 
   function padBtn(g, r, kind) {
     var cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+    var zone = padZone();
     var held = false;
     for (var id in SG.input.pointers) {
       var p = SG.input.pointers[id];
-      if (kind === 'jump' ? p.x > SG.W * 0.5 : inRect(p.x, p.y, r)) { held = true; break; }
+      var on = kind === 'jump'
+        ? p.x > SG.W * 0.5 && !inRect(p.sx, p.sy, pauseRect())
+        : inRect(p.x, p.y, zone) && (kind === 'left' ? p.x < PAD_SPLIT : p.x >= PAD_SPLIT);
+      if (on) { held = true; break; }
     }
     g.save();
     g.globalAlpha = held ? 0.5 : 0.24;
