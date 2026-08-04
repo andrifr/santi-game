@@ -237,11 +237,27 @@ kitchen, hall, and the street outside. Tap anywhere to walk there; tap an
 object to walk to it and use it. A guide arrow tracks the current task,
 with an edge marker pointing the way when the target is off screen.
 
-Thirteen steps make up one day: get up, microwave the bread and cheese,
-hairspray, pick a Supreme tee (your choice changes what he wears for the
-rest of the day), leash Rue, walk her to the tree and back, film a
-*Santi Can't* video, destroy five wings, ring Daley, go to bed. Each one
-pays 40 wings into the same jar as the other modes.
+**No two days are the same.** Ten to fourteen jobs are drawn from a
+larger pool and shuffled, so the order changes every morning: hairspray,
+a Supreme tee, microwaved bread and cheese, walking Rue to the tree and
+back, filming a *Santi Can't* video, three chords on the guitar, K3 on
+the speaker, one quick game that is never one game, watering the plant,
+ringing Daley, destroying five wings. Getting up is always first and
+going to bed always last; anything that has to stay in order — grab the
+bread *then* microwave it, leash *then* door *then* tree *then* home —
+moves around as a block. Each job pays 40 wings.
+
+The video is different every day, title and view count both, and so is
+the poster over his bed. Tap Rue while she's out with him and she has
+opinions. The day is seeded off how many days you've played, so a given
+day is consistent from start to finish but tomorrow is a different one.
+
+**Something different bangs on the door every night.** Daley has clogged
+the toilet, but she has also eaten his last wing; Rue wants out at half
+two, or has taken the entire duvet; Krampus is working year round now;
+K3 are harmonising outside the window at 3am; and Kabouter Plop turns up
+and has to explain, again, that he is not Daley. Never the same visitor
+two nights running.
 
 Everything else in the flat is tappable too — the TV, the couch, the
 fridge, the alarm clock, the bin outside — and answers with a line

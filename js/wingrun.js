@@ -231,6 +231,7 @@
     // Pause is claimed before anything else consumes the tap.
     if (SG.input.tappedRect(pauseRect())) {
       st.phase = 'paused';
+      SG.input.releaseAll();     // a way out of a touch that never ended
       SG.audio.play('back');
       return;
     }

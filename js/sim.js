@@ -37,9 +37,12 @@
       // --- bedroom ---
       { id: 'bed',       x: 190,  w: 260, kind: 'bed',       label: 'BED' },
       { id: 'clock',     x: 400,  w: 60,  kind: 'clock',     label: 'ALARM',
-        flavor: ["It's 11:40. Bit late." , 'Snoozed six times.'] },
+        flavor: ["It's 11:40. Bit late.", 'Snoozed six times.',
+                 'The alarm did its best.', 'Set for 7. Purely decorative.',
+                 'It went off. He remembers it going off.'] },
       { id: 'poster',    x: 600,  w: 110, kind: 'poster',    label: 'POSTER', onWall: true,
-        flavor: ['1.2M subscribers. One day.', 'SANTI CAN\'T - the poster.'] },
+        flavor: ['1.2M subscribers. One day.', 'SANTI CAN\'T - the poster.',
+                 'Straight. Finally straight.', 'Daley says it is crooked. It is not.'] },
 
       // --- bathroom ---
       { id: 'sink',      x: 940,  w: 150, kind: 'sink',      label: 'MIRROR' },
@@ -56,22 +59,37 @@
       // --- closet ---
       { id: 'rack',      x: 1650, w: 300, kind: 'rack',      label: 'SUPREME TEES' },
       { id: 'shoes',     x: 1900, w: 120, kind: 'shoes',     label: 'SHOES',
-        flavor: ['Fresh. Obviously.', 'These ones. Always these ones.'] },
+        flavor: ['Fresh. Obviously.', 'These ones. Always these ones.',
+                 'Not for outside. These are inside shoes now.',
+                 'Cleaned with a toothbrush. His toothbrush.'] },
+
+      { id: 'guitar',    x: 500,  w: 70,  kind: 'guitar',    label: 'GUITAR',
+        flavor: ['Three chords. Two of them good.', 'It has been in tune once.'] },
 
       // --- living room ---
       { id: 'couch',     x: 2130, w: 280, kind: 'couch',     label: 'COUCH',
         flavor: ['No sitting. Busy day.', 'The couch is calling. Ignore it.'] },
+      { id: 'console',   x: 710, w: 90,  kind: 'console',   label: 'CONSOLE',
+        flavor: ['One game. One.', 'Fortnite. Obviously.', 'Brawl Stars until the battery dies.'] },
+      { id: 'stereo',    x: 1450, w: 90,  kind: 'stereo',    label: 'SPEAKER',
+        flavor: ['K3 is already queued.', 'The neighbours know every word by now.'] },
       { id: 'tv',        x: 2400, w: 180, kind: 'tv',        label: 'TV',
-        flavor: ['Nothing on.', 'Fortnite later. Promise.'] },
+        flavor: ['Nothing on.', 'Fortnite later. Promise.',
+                 'Paused three weeks ago. Still paused.',
+                 'K3 on the music channel. Leave it.'] },
       { id: 'camera',    x: 2620, w: 130, kind: 'camera',    label: 'CAMERA' },
       { id: 'phone',     x: 2780, w: 70,  kind: 'phone',     label: 'PHONE' },
 
       // --- kitchen ---
       { id: 'fridge',    x: 2930, w: 150, kind: 'fridge',    label: 'FRIDGE',
-        flavor: ['Hot sauce. Three bottles.', 'Mostly hot sauce in here.'] },
+        flavor: ['Hot sauce. Three bottles.', 'Mostly hot sauce in here.',
+                 'One yoghurt. Expired. Load-bearing.',
+                 'Daley labelled her cheese. Bold.'] },
       { id: 'counter',   x: 3160, w: 240, kind: 'counter',   label: 'BREAD + CHEESE' },
       { id: 'microwave', x: 3380, w: 140, kind: 'microwave', label: 'MICROWAVE' },
       { id: 'wings',     x: 3520, w: 120, kind: 'wings',     label: 'CHICKEN WINGS' },
+      { id: 'plant',     x: 3640, w: 70,  kind: 'plant',     label: 'THE PLANT',
+        flavor: ['Still alive. Somehow.', 'It has seen things.', 'Daley named it. He forgot the name.'] },
 
       // --- hall / outside ---
       { id: 'leash',     x: 3660, w: 60,  kind: 'leash',     label: 'LEASH', onWall: true },
@@ -79,17 +97,75 @@
       { id: 'bin',       x: 4060, w: 80,  kind: 'bin',       label: 'BIN',
         flavor: ['Someone else\'s problem.', 'Bin day was Tuesday.'] },
       { id: 'lamp',      x: 4220, w: 50,  kind: 'lamp',      label: 'LAMPPOST',
-        flavor: ['Rue knows this one well.', 'A landmark, apparently.'] },
+        flavor: ['Rue knows this one well.', 'A landmark, apparently.',
+                 'Every single time. Without fail.',
+                 'She has strong feelings about this lamppost.'] },
       { id: 'tree',      x: 4450, w: 180, kind: 'tree',      label: 'THE TREE' },
       { id: 'bench',     x: 4650, w: 150, kind: 'bench',     label: 'BENCH',
-        flavor: ['Sit later. Wings first.', 'Prime wing-eating bench.'] },
+        flavor: ['Sit later. Wings first.', 'Prime wing-eating bench.',
+                 'Someone carved a K3 lyric into it.',
+                 'Still damp. It is always damp.'] },
+      { id: 'bike',      x: 4300, w: 110, kind: 'bike',      label: 'BIKE',
+        flavor: ['Someone locked it to itself.', 'Flat since March.', 'Not his. Definitely not his.'] },
     ];
   }
 
   // ---------------------------------------------------------------
   // The day
   // ---------------------------------------------------------------
-  var TASKS = [
+  /* ---------------------------------------------------------------
+     The day is seeded off how many days have been played, so a given
+     day is the same all the way through but no two days run the same:
+     different order, different jobs, different video, different thing
+     banging on the door at midnight.
+     --------------------------------------------------------------- */
+  function dayIndex() { return SG.save.data.simDays || 0; }
+
+  /* xorshift, seeded through a proper avalanche hash and salted per
+     stream. A plain LCG seeded with the day number correlates hard
+     between neighbouring days - days 6 to 10 all drew the same night
+     visitor - because the Nth value from seed N and seed N+1 barely
+     differ. */
+  function hash32(n) {
+    n = (n ^ 61) ^ (n >>> 16);
+    n = (n + (n << 3)) | 0;
+    n = n ^ (n >>> 4);
+    n = Math.imul(n, 0x27d4eb2d);
+    n = n ^ (n >>> 15);
+    return n >>> 0;
+  }
+
+  function rngFor(seed, salt) {
+    var s = hash32((seed | 0) * 0x9e3779b1 ^ ((salt || 0) * 0x85ebca6b)) || 1;
+    return function () {
+      s ^= (s << 13); s >>>= 0;
+      s ^= (s >>> 17);
+      s ^= (s << 5); s >>>= 0;
+      return s / 4294967296;
+    };
+  }
+
+  // Never the same two days running.
+  function pickFresh(day, salt, arr) {
+    var now = rpick(rngFor(day, salt), arr);
+    if (day <= 0) return now;
+    var prev = rpick(rngFor(day - 1, salt), arr);
+    if (now !== prev) return now;
+    var i = arr.indexOf(now);
+    var step = 1 + Math.floor(rngFor(day, salt + 977)() * (arr.length - 1));
+    return arr[(i + step) % arr.length];
+  }
+  function rpick(R, arr) { return arr[Math.floor(R() * arr.length) % arr.length]; }
+  function rshuffle(R, arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(R() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  var ALL_TASKS = [
     { id: 'wake',   title: 'WAKE UP',           hint: 'Get out of bed',            target: 'bed' },
     { id: 'grab',   title: 'BREAD WITH CHEESE', hint: 'Grab the bread and cheese', target: 'counter' },
     { id: 'nuke',   title: 'BREAD WITH CHEESE', hint: 'Microwave it',              target: 'microwave' },
@@ -102,7 +178,134 @@
     { id: 'video',  title: "SANTI CAN'T",       hint: 'Film a video',              target: 'camera' },
     { id: 'wings',  title: 'CHICKEN WINGS',     hint: 'Destroy them',              target: 'wings' },
     { id: 'call',   title: 'CALL DALEY',        hint: 'Give her a ring',           target: 'phone' },
+    { id: 'k3',     title: 'K3',                hint: 'Put K3 on. Loud.',          target: 'stereo' },
+    { id: 'game',   title: 'ONE QUICK GAME',    hint: 'It is never one game',      target: 'console' },
+    { id: 'plant',  title: 'THE PLANT',         hint: 'Water it before it dies',   target: 'plant' },
+    { id: 'guitar', title: 'THREE CHORDS',      hint: 'He knows three chords',     target: 'guitar' },
     { id: 'sleep',  title: 'GO TO SLEEP',       hint: 'Back to bed',               target: 'bed' },
+  ];
+
+  /* Jobs that must stay in order stick together in one block; the
+     blocks themselves get shuffled. Waking up is always first and going
+     to bed always last, and everything in between moves around. */
+  var CHAINS = [
+    ['grab', 'nuke'],
+    ['leash', 'out', 'tree', 'home'],
+    ['hair'], ['shirt'], ['video'], ['wings'], ['call'],
+    ['k3'], ['game'], ['plant'], ['guitar'],
+  ];
+  var ALWAYS = ['hair', 'wings'];      // the two he would never skip
+  var JOBS_PER_DAY = 8;                // blocks between waking and sleeping
+
+  function taskById(id) {
+    for (var i = 0; i < ALL_TASKS.length; i++) if (ALL_TASKS[i].id === id) return ALL_TASKS[i];
+    return null;
+  }
+
+  function buildDay(R) {
+    var must = [], rest = [];
+    for (var i = 0; i < CHAINS.length; i++) {
+      (CHAINS[i].length === 1 && ALWAYS.indexOf(CHAINS[i][0]) >= 0 ? must : rest).push(CHAINS[i]);
+    }
+    var chosen = must.concat(rshuffle(R, rest).slice(0, Math.max(0, JOBS_PER_DAY - must.length)));
+    chosen = rshuffle(R, chosen);
+
+    var plan = [taskById('wake')];
+    for (var c = 0; c < chosen.length; c++) {
+      for (var j = 0; j < chosen[c].length; j++) plan.push(taskById(chosen[c][j]));
+    }
+    plan.push(taskById('sleep'));
+    return plan;
+  }
+
+  // ---- a different video every day -------------------------------
+  var VIDEOS = [
+    { t: 'MICROWAVE BREAD (GONE WRONG)', l: '"Yo what is up, Santi here"', v: 12400 },
+    { t: 'I ATE 100 CHICKEN WINGS',      l: '"This might end me"',        v: 84300 },
+    { t: 'HOTTEST SAUCE IN BELGIUM',     l: '"I am not crying, you are"',  v: 41200 },
+    { t: 'RATING MY GIRLFRIEND\'S FITS', l: '"She will not see this"',     v: 63800 },
+    { t: 'MY DOG WILL NOT POOP',         l: '"Day nine. Nothing."',        v: 7100 },
+    { t: 'K3 SONGS RANKED (BRAVE)',      l: '"I stand by every word"',     v: 155000 },
+    { t: '24H IN A MUSHROOM HOUSE',      l: '"Do not ask why"',            v: 22600 },
+    { t: 'TEACHING RUE TO SKATEBOARD',   l: '"She is a natural"',          v: 9400 },
+    { t: 'I TRIED DALEY\'S COOKING',     l: '"For legal reasons, no"',     v: 38900 },
+    { t: 'BUILDING A PC OUT OF WAFFLES', l: '"It boots. Somehow."',        v: 71500 },
+  ];
+
+  /* Something bangs on the door every night, and it is not always
+     Daley. */
+  var NIGHTS = [
+    { who: 'daley', lines: [
+      { w: 'daley', t: 'SANTI. SANTI WAKE UP.' },
+      { w: 'daley', t: 'I clogged the toilet.' },
+      { w: 'santi', t: 'Lap.' },
+    ] },
+    { who: 'daley', lines: [
+      { w: 'daley', t: 'SANTI. Are you asleep?' },
+      { w: 'santi', t: 'Yes.' },
+      { w: 'daley', t: 'Good. I ate your last wing.' },
+      { w: 'santi', t: 'LAP.' },
+    ] },
+    { who: 'rue', lines: [
+      { w: 'rue',   t: '*scratching at the door*' },
+      { w: 'santi', t: 'Rue. It is half two.' },
+      { w: 'rue',   t: '*now she wants to poop*' },
+      { w: 'santi', t: 'Lap.' },
+    ] },
+    { who: 'rue', lines: [
+      { w: 'rue',   t: '*jumps on the bed*' },
+      { w: 'rue',   t: '*takes the entire duvet*' },
+      { w: 'santi', t: 'That is my duvet, Rue.' },
+      { w: 'rue',   t: '*it is her duvet now*' },
+    ] },
+    { who: 'krampus', lines: [
+      { w: 'krampus', t: 'HO. HO. NO.' },
+      { w: 'santi',   t: 'It is not even December.' },
+      { w: 'krampus', t: 'I WORK YEAR ROUND NOW.' },
+      { w: 'krampus', t: 'THE LIST SAYS: MICROWAVED BREAD.' },
+      { w: 'santi',   t: 'Lap.' },
+    ] },
+    { who: 'plop', lines: [
+      { w: 'plop',  t: 'Hallo Santi!' },
+      { w: 'santi', t: 'Daley? Why are you wearing a red hat?' },
+      { w: 'plop',  t: 'I am not Daley. I am Plop.' },
+      { w: 'santi', t: 'You look EXACTLY like Daley.' },
+      { w: 'plop',  t: 'Everyone says that. I hate it here.' },
+    ] },
+    { who: 'k3', lines: [
+      { w: 'k3',    t: '*three-part harmony, outside the window*' },
+      { w: 'santi', t: 'It is 3am.' },
+      { w: 'k3',    t: '*key change*' },
+      { w: 'santi', t: 'Okay that one is actually good.' },
+    ] },
+    { who: 'daley', lines: [
+      { w: 'daley', t: 'Santi. Wake up. Emergency.' },
+      { w: 'santi', t: 'What. WHAT.' },
+      { w: 'daley', t: 'I forgot what I was going to say.' },
+      { w: 'santi', t: 'Lap.' },
+    ] },
+  ];
+
+  // ---- the poster above the bed changes -------------------------
+  var POSTERS = [
+    { label: "SANTI CAN'T", sub: '1.2M', bg: '#2a2352', ink: '#ffd400' },
+    { label: 'K3',          sub: 'TOUR', bg: '#7a2a6a', ink: '#ffd6f2' },
+    { label: 'WINGS',       sub: 'HOT',  bg: '#5a2018', ink: '#ff9a4a' },
+    { label: 'BRUSSELS',    sub: '1958', bg: '#1d3b5c', ink: '#9ad4ff' },
+    { label: 'RUE',         sub: 'GOOD DOG', bg: '#3a2e22', ink: '#f0d8a8' },
+  ];
+
+  var RUE_LINES = [
+    'She looks up. She does not move.',
+    'Tail going. Legs not.',
+    'She has found a smell. This is now her life.',
+    'Rue has decided this lamppost is important.',
+    'She is looking at you. Just looking.',
+    'One ear up. Something happened somewhere.',
+    'She sits down. In the middle of the pavement.',
+    'Good dog. Objectively.',
+    'She wants to go home. You just left the house.',
+    'Rue sighs. Very deeply, for a dog.',
   ];
 
   var WINGS_PER_TASK = 40;
@@ -116,7 +319,17 @@
 
   // ---------------------------------------------------------------
   function reset() {
+    // Each choice draws from its own stream, so the order of the day
+    // does not decide which video he films.
+    var day = dayIndex();
     st = {
+      day: day + 1,
+      plan: buildDay(rngFor(day, 101)),
+      video: pickFresh(day, 211, VIDEOS),
+      night: pickFresh(day, 337, NIGHTS),
+      poster: pickFresh(day, 449, POSTERS),
+      rueLines: rshuffle(rngFor(day, 563), RUE_LINES),
+      rueSaid: 0,
       x: 250, vx: 0, facing: 1, walkPhase: 0,
       targetX: null, pending: null,          // object to use on arrival
       cam: 0,
@@ -144,7 +357,7 @@
     };
   }
 
-  function task() { return st.done ? null : TASKS[st.taskIndex]; }
+  function task() { return st.done ? null : st.plan[st.taskIndex]; }
   function obj(id) {
     for (var i = 0; i < st.objects.length; i++) if (st.objects[i].id === id) return st.objects[i];
     return null;
@@ -162,7 +375,7 @@
     SG.audio.play('wing');
     st.flash = 0.5;
     st.taskIndex++;
-    if (st.taskIndex >= TASKS.length) {
+    if (st.taskIndex >= st.plan.length) {
       st.done = true;
       SG.save.data.simDays = (SG.save.data.simDays || 0) + 1;
       SG.save.submit('sim', Math.max(1, 999 - Math.floor(st.t)));
@@ -256,11 +469,42 @@
         openOverlay('call', { line: 0, t: 0 });
         break;
 
+      case 'k3':
+        openOverlay('k3', { beats: 0 });
+        break;
+
+      case 'game':
+        openOverlay('game', { t: 0, stage: 0 });
+        break;
+
+      case 'plant':
+        st.plantWatered = true;
+        say(SG.pick([
+          'It lives another day.',
+          'Water. The one thing it asks for.',
+          'Daley would have let it die.',
+        ]));
+        completeTask();
+        break;
+
+      case 'guitar':
+        openOverlay('guitar', { strums: 0 });
+        break;
+
       case 'sleep':
         st.inBed = true;
         openOverlay('sleep', { t: 0, stage: 0, line: 0 });
         break;
     }
+  }
+
+  /* Rue is pokeable whenever she is out with him, and says something
+     different each time until she runs out of opinions. */
+  function pokeRue() {
+    var line = st.rueLines[st.rueSaid % st.rueLines.length];
+    st.rueSaid++;
+    say(line);
+    SG.audio.play('tap');
   }
 
   var MIRROR_NICE = [
@@ -311,6 +555,7 @@
 
     if (SG.input.tappedRect(pauseRect()) && !st.done) {
       st.paused = true;
+      SG.input.releaseAll();     // a way out of a touch that never ended
       SG.audio.play('back');
       return;
     }
@@ -371,13 +616,28 @@
       if (tap.x < 0) continue;
       var wx = tap.x + st.cam;
 
-      // object hit? generous vertical band so it's easy on a phone
-      var hit = null;
+      // Rue first - she is standing in front of the furniture, and
+      // she is the thing you most want to poke.
+      if (st.rue.follow && Math.abs(wx - st.rue.x) < 46 && tap.y > FLOOR_Y - 90) {
+        if (Math.abs(st.rue.x - st.x) <= REACH + 40) pokeRue();
+        else { st.targetX = SG.clamp(st.rue.x - 50, 40, WORLD_W - 60); st.pending = null; }
+        continue;
+      }
+
+      /* Object hit, with a generous band so it is easy on a phone.
+         Takes the NEAREST centre rather than the first in the list: a
+         small thing standing in front of a big one (the plant by the
+         counter, the speaker by the couch) is otherwise unreachable,
+         because the big one's band swallows it. */
+      var hit = null, bestD = 1e9;
       for (var i = 0; i < st.objects.length; i++) {
         var o = st.objects[i];
         var oy = o.onWall ? FLOOR_Y - 210 : FLOOR_Y - 90;
         if (wx >= o.x - o.w / 2 - 12 && wx <= o.x + o.w / 2 + 12 &&
-            tap.y > oy - 80 && tap.y < FLOOR_Y + 40) { hit = o; break; }
+            tap.y > oy - 80 && tap.y < FLOOR_Y + 40) {
+          var od = Math.abs(wx - o.x);
+          if (od < bestD) { bestD = od; hit = o; }
+        }
       }
 
       if (hit) {
@@ -424,8 +684,37 @@
         if (o.stage === 0 && o.t > 0.8) { o.stage = 1; o.t = 0; SG.audio.play('record'); }
         else if (o.stage === 1 && o.t > 2.4) { o.stage = 2; o.t = 0; SG.audio.play('power'); }
         else if (o.stage === 2) {
-          o.views = Math.min(12400, Math.floor(o.t * 9000));
-          if (o.t > 1.8 && SG.input.takeTap()) { st.videoMade = true; say('Uploaded. Lap if it flops.'); closeOverlay(true); }
+          o.views = Math.min(st.video.v, Math.floor(o.t * st.video.v * 0.72));
+          if (o.t > 1.8 && SG.input.takeTap()) {
+            st.videoMade = true;
+            say(SG.pick(['Uploaded. Lap if it flops.', 'That is going off.', 'Thumbnail took longer than the video.']));
+            closeOverlay(true);
+          }
+        }
+        break;
+
+      case 'k3':
+        if (SG.input.takeTap()) {
+          o.beats++;
+          SG.audio.play(o.beats % 2 ? 'point' : 'wing');
+          if (o.beats >= 4) { say(SG.pick(['Every word. Every time.', 'He knows the dance too.', 'Neighbours: informed.'])); closeOverlay(true); }
+        }
+        break;
+
+      case 'game':
+        o.t += dt;
+        if (o.stage === 0 && o.t > 1.6) { o.stage = 1; o.t = 0; SG.audio.play('crash'); }
+        else if (o.stage === 1 && o.t > 0.6 && SG.input.takeTap()) {
+          say(SG.pick(['One more. Definitely the last one.', 'Lap. Third place.', 'That was lag. Genuinely.']));
+          closeOverlay(true);
+        }
+        break;
+
+      case 'guitar':
+        if (SG.input.takeTap()) {
+          o.strums++;
+          SG.audio.play(['point', 'wing', 'pop'][o.strums % 3]);
+          if (o.strums >= 3) { say(SG.pick(['Three chords. Still three chords.', 'Wonderwall. It is always Wonderwall.'])); closeOverlay(true); }
         }
         break;
 
@@ -455,9 +744,9 @@
         } else if (o.stage === 1) {
           if (SG.input.takeTap()) {
             o.line++;
-            if (o.line === SLEEP_LINES.length - 1) SG.audio.play('lap');
+            if (o.line === st.night.lines.length - 1) SG.audio.play('lap');
             else SG.audio.play('tap');
-            if (o.line >= SLEEP_LINES.length) { o.stage = 2; o.t = 0; }
+            if (o.line >= st.night.lines.length) { o.stage = 2; o.t = 0; }
           }
         } else {
           if (o.t > 1.2) closeOverlay(true);
@@ -465,12 +754,6 @@
         break;
     }
   }
-
-  var SLEEP_LINES = [
-    { who: 'daley', text: 'SANTI. SANTI WAKE UP.' },
-    { who: 'daley', text: 'I clogged the toilet.' },
-    { who: 'santi', text: 'Lap.' },
-  ];
 
   var CALL_LINES = [
     { who: 'santi', text: 'Daley! Guess what I ate.' },
@@ -599,14 +882,100 @@
         SG.ui.text(g, '11:40', x, base - 40, { size: 13, color: '#ff5a4a', shadow: false });
         break;
 
-      case 'poster':
-        g.fillStyle = '#14102a';
+      // Different poster on the wall every day.
+      case 'poster': {
+        var po = st.poster;
+        g.fillStyle = po.bg;
         SG.roundRect(g, x - 55, base - 300, 110, 140, 5); g.fill();
-        g.strokeStyle = '#ffb02e'; g.lineWidth = 3;
+        g.strokeStyle = po.ink; g.lineWidth = 3;
         SG.roundRect(g, x - 55, base - 300, 110, 140, 5); g.stroke();
-        SG.ui.text(g, 'SANTI', x, base - 258, { size: 19, color: '#fff', shadow: false });
-        SG.ui.text(g, "CAN'T", x, base - 234, { size: 19, color: '#ffb02e', shadow: false });
-        SG.art.drawWing(g, x, base - 195, 1.5, -0.3);
+        var words = po.label.split(' ');
+        if (words.length > 1) {
+          SG.ui.text(g, words[0], x, base - 262, { size: 17, color: '#fff', shadow: false });
+          SG.ui.text(g, words.slice(1).join(' '), x, base - 240, { size: 17, color: po.ink, shadow: false });
+        } else {
+          SG.ui.text(g, po.label, x, base - 250, { size: 20, color: '#fff', shadow: false });
+        }
+        SG.ui.text(g, po.sub, x, base - 214, { size: 12, color: po.ink, shadow: false });
+        SG.art.drawWing(g, x, base - 188, 1.3, -0.3);
+        break;
+      }
+
+      case 'guitar':
+        g.strokeStyle = '#4a3218'; g.lineWidth = 7;
+        g.beginPath(); g.moveTo(x, base - 42); g.lineTo(x + 6, base - 128); g.stroke();
+        g.fillStyle = '#b5762e';
+        g.beginPath(); g.ellipse(x - 4, base - 26, 24, 30, 0.12, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = 'rgba(40,22,8,0.6)'; g.lineWidth = 2; g.stroke();
+        g.fillStyle = '#2a1a0c';
+        g.beginPath(); g.arc(x - 2, base - 30, 8, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 1;
+        for (var gs = 0; gs < 4; gs++) {
+          g.beginPath(); g.moveTo(x - 6 + gs * 4, base - 4); g.lineTo(x + 2 + gs * 3, base - 126); g.stroke();
+        }
+        break;
+
+      case 'console':
+        g.fillStyle = '#22283a';
+        SG.roundRect(g, x - 34, base - 34, 68, 34, 6); g.fill();
+        g.fillStyle = '#4dd47a';
+        g.fillRect(x - 26, base - 26, 30, 4);
+        g.fillStyle = '#3a4260';                       // controller
+        SG.roundRect(g, x - 20, base - 62, 40, 22, 9); g.fill();
+        g.fillStyle = '#1d2233';
+        g.beginPath(); g.arc(x - 9, base - 51, 5, 0, Math.PI * 2); g.fill();
+        g.beginPath(); g.arc(x + 9, base - 51, 5, 0, Math.PI * 2); g.fill();
+        break;
+
+      case 'stereo':
+        g.fillStyle = '#2a2233';
+        SG.roundRect(g, x - 26, base - 96, 52, 96, 7); g.fill();
+        g.strokeStyle = 'rgba(255,255,255,0.16)'; g.lineWidth = 2;
+        SG.roundRect(g, x - 26, base - 96, 52, 96, 7); g.stroke();
+        var thump = 1 + Math.sin(st.t * 9) * 0.07;
+        g.fillStyle = '#141018';
+        g.beginPath(); g.arc(x, base - 66, 17 * thump, 0, Math.PI * 2); g.fill();
+        g.fillStyle = '#4a4258';
+        g.beginPath(); g.arc(x, base - 66, 7 * thump, 0, Math.PI * 2); g.fill();
+        g.fillStyle = '#141018';
+        g.beginPath(); g.arc(x, base - 26, 11 * thump, 0, Math.PI * 2); g.fill();
+        g.fillStyle = '#ff8ad8';
+        SG.ui.text(g, 'K3', x, base - 106, { size: 13, color: '#ff8ad8', shadow: false });
+        break;
+
+      case 'plant':
+        g.fillStyle = '#a3572e';
+        g.beginPath();
+        g.moveTo(x - 20, base - 34); g.lineTo(x + 20, base - 34);
+        g.lineTo(x + 14, base); g.lineTo(x - 14, base);
+        g.closePath(); g.fill();
+        g.fillStyle = '#3f8f43';
+        for (var lf = 0; lf < 5; lf++) {
+          var a2 = -Math.PI / 2 + (lf - 2) * 0.42;
+          g.save();
+          g.translate(x, base - 34);
+          g.rotate(a2 + Math.sin(st.t * 1.2 + lf) * 0.05);
+          g.beginPath();
+          g.ellipse(0, -26, 9, 26, 0, 0, Math.PI * 2);
+          g.fill();
+          g.restore();
+        }
+        break;
+
+      case 'bike':
+        g.strokeStyle = '#2c3244'; g.lineWidth = 4;
+        g.beginPath(); g.arc(x - 26, base - 22, 21, 0, Math.PI * 2); g.stroke();
+        g.beginPath(); g.arc(x + 26, base - 22, 21, 0, Math.PI * 2); g.stroke();
+        g.strokeStyle = '#4dd47a'; g.lineWidth = 5;
+        g.beginPath();
+        g.moveTo(x - 26, base - 22); g.lineTo(x - 2, base - 22);
+        g.lineTo(x + 10, base - 54); g.lineTo(x + 26, base - 22);
+        g.moveTo(x - 2, base - 22); g.lineTo(x + 10, base - 54);
+        g.stroke();
+        g.strokeStyle = '#2c3244'; g.lineWidth = 3;
+        g.beginPath(); g.moveTo(x + 10, base - 54); g.lineTo(x + 22, base - 62); g.stroke();
+        g.fillStyle = '#2c3244';
+        SG.roundRect(g, x - 12, base - 60, 20, 7, 3); g.fill();
         break;
 
       case 'sink':
@@ -1013,7 +1382,7 @@
     // task banner
     SG.ui.panel(g, 16, 14, 320, 58, { fill: 'rgba(12,10,28,0.82)', r: 12, border: 'rgba(255,214,80,0.45)' });
     if (tk) {
-      SG.ui.text(g, 'TASK ' + (st.taskIndex + 1) + '/' + TASKS.length, 30, 32, {
+      SG.ui.text(g, 'DAY ' + st.day + '  ·  TASK ' + (st.taskIndex + 1) + '/' + st.plan.length, 30, 32, {
         size: 11, color: 'rgba(255,255,255,0.45)', align: 'left', shadow: false,
       });
       SG.ui.text(g, tk.title, 30, 50, { size: 18, color: '#ffd400', align: 'left', shadow: false });
@@ -1129,13 +1498,13 @@
           g.beginPath(); g.arc(CX - 90, 168, 11, 0, Math.PI * 2); g.fill();
           SG.ui.text(g, 'REC', CX - 58, 168, { size: 20, color: '#e8202a', align: 'left', shadow: false });
           SG.art.drawHead(g, CX, 262, 66, 'santi', 'normal');
-          SG.ui.text(g, '"Yo what is up, Santi here"', CX, 358, {
+          SG.ui.text(g, st.video.l, CX, 358, {
             size: 16, color: 'rgba(255,255,255,0.85)', weight: '700',
             font: '"Avenir Next", system-ui, sans-serif', shadow: false,
           });
         } else {
           SG.ui.text(g, "SANTI CAN'T", CX, 150, { size: 26, color: '#ffd400', shadow: false });
-          SG.ui.text(g, 'MICROWAVE BREAD (GONE WRONG)', CX, 182, {
+          SG.ui.text(g, st.video.t, CX, 182, {
             size: 14, color: 'rgba(255,255,255,0.7)', shadow: false,
           });
           SG.ui.text(g, o.views.toLocaleString(), CX, 250, { size: 46, color: '#fff', shadow: false });
@@ -1144,6 +1513,72 @@
             SG.ui.text(g, 'TAP TO UPLOAD', CX, 356, { size: 16, color: '#4dd47a', shadow: false });
           }
         }
+        break;
+      }
+
+      case 'k3': {
+        SG.ui.panel(g, CX - 230, 110, 460, 300);
+        SG.ui.text(g, 'K3', CX, 158, { size: 34, color: '#ff8ad8', shadow: false });
+        var bounce = Math.abs(Math.sin(st.t * 7)) * 10;
+        nightFace(g, 'k3', CX, 250 - bounce, 128);
+        for (var nt = 0; nt < 4; nt++) {
+          var na = st.t * 3 + nt * 1.6;
+          g.globalAlpha = 0.5 + Math.sin(na) * 0.3;
+          SG.ui.text(g, '♪', CX - 150 + nt * 100, 200 + Math.sin(na) * 22, {
+            size: 24, color: '#ff8ad8', shadow: false,
+          });
+          g.globalAlpha = 1;
+        }
+        SG.ui.text(g, 'TAP TO SING ALONG   ' + o.beats + ' / 4', CX, 366, {
+          size: 16, color: '#fff', shadow: false,
+        });
+        break;
+      }
+
+      case 'game': {
+        SG.ui.panel(g, CX - 240, 110, 480, 300);
+        SG.ui.text(g, 'ONE QUICK GAME', CX, 156, { size: 22, color: '#4dd47a', shadow: false });
+        g.fillStyle = '#0d1220';
+        SG.roundRect(g, CX - 170, 180, 340, 150, 8); g.fill();
+        if (o.stage === 0) {
+          for (var pl = 0; pl < 5; pl++) {
+            var px2 = CX - 140 + ((st.t * 70 + pl * 74) % 300);
+            g.fillStyle = ['#4dd47a', '#e8202a', '#ffd400', '#4aa8ff', '#b070ff'][pl];
+            SG.roundRect(g, px2, 214 + (pl % 3) * 34, 14, 22, 3); g.fill();
+          }
+          SG.ui.text(g, String(Math.max(1, 12 - Math.floor(o.t * 7))) + ' LEFT', CX, 352, {
+            size: 15, color: 'rgba(255,255,255,0.6)', shadow: false,
+          });
+        } else {
+          SG.ui.text(g, '3rd', CX, 236, { size: 46, color: '#ff5a4a', shadow: false });
+          SG.ui.text(g, 'THAT WAS LAG', CX, 284, { size: 15, color: 'rgba(255,255,255,0.6)', shadow: false });
+          SG.ui.text(g, 'TAP TO STOP AT ONE', CX, 352, { size: 14, color: '#4dd47a', shadow: false });
+        }
+        break;
+      }
+
+      case 'guitar': {
+        SG.ui.panel(g, CX - 210, 130, 420, 250);
+        SG.ui.text(g, 'THREE CHORDS', CX, 178, { size: 22, color: '#b5762e', shadow: false });
+        var strum = Math.sin(st.t * 14) * (o.strums ? 5 : 1);
+        g.save();
+        g.translate(CX, 262);
+        g.rotate(0.12 + strum * 0.01);
+        g.fillStyle = '#b5762e';
+        g.beginPath(); g.ellipse(0, 0, 44, 54, 0, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = 'rgba(40,22,8,0.6)'; g.lineWidth = 3; g.stroke();
+        g.fillStyle = '#2a1a0c';
+        g.beginPath(); g.arc(0, -4, 15, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = '#4a3218'; g.lineWidth = 11;
+        g.beginPath(); g.moveTo(4, -46); g.lineTo(16, -146); g.stroke();
+        g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineWidth = 1.4;
+        for (var st2 = 0; st2 < 4; st2++) {
+          g.beginPath();
+          g.moveTo(-9 + st2 * 6 + strum, 44); g.lineTo(6 + st2 * 5 + strum, -142);
+          g.stroke();
+        }
+        g.restore();
+        SG.ui.text(g, 'TAP TO STRUM   ' + o.strums + ' / 3', CX, 356, { size: 16, color: '#fff', shadow: false });
         break;
       }
 
@@ -1192,20 +1627,17 @@
         } else if (o.stage === 1) {
           g.fillStyle = 'rgba(0,0,0,0.9)';
           g.fillRect(0, 0, SG.W, SG.H);
-          var ln = SLEEP_LINES[Math.min(o.line, SLEEP_LINES.length - 1)];
-          var isS = ln.who === 'santi';
-          var face = SG.art.faces[isS ? 'santi' : 'daley'];
-          // she bursts in, so she gets a shove of movement
+          var ln = st.night.lines[Math.min(o.line, st.night.lines.length - 1)];
+          var isS = ln.w === 'santi';
+          var sp = SPEAKERS[ln.w] || SPEAKERS.daley;
+          // whoever it is, they burst in, so they get a shove of movement
           var shove = isS ? 0 : Math.sin(st.t * 22) * 3;
-          if (face) g.drawImage(face, CX - 52 + shove, 130, 104, 104);
-          SG.ui.text(g, isS ? 'SANTI' : 'DALEY', CX, 254, {
-            size: 15, color: isS ? '#ffd400' : '#ff6b8a', shadow: false,
-          });
+          nightFace(g, ln.w, CX + shove, 182, 104);
+          SG.ui.text(g, sp.name, CX, 254, { size: 15, color: sp.color, shadow: false });
           SG.ui.panel(g, CX - 230, 282, 460, 68, {
-            fill: isS ? 'rgba(255,214,80,0.14)' : 'rgba(255,107,138,0.16)', r: 12,
-            border: isS ? 'rgba(255,214,80,0.5)' : 'rgba(255,107,138,0.6)',
+            fill: sp.fill, r: 12, border: sp.border,
           });
-          SG.ui.text(g, ln.text, CX, 316, {
+          SG.ui.text(g, ln.t, CX, 316, {
             size: 18, color: '#fff', weight: '700',
             font: '"Avenir Next", system-ui, sans-serif', shadow: false,
           });
@@ -1218,6 +1650,94 @@
         break;
       }
     }
+  }
+
+  var SPEAKERS = {
+    santi:   { name: 'SANTI',   color: '#ffd400', fill: 'rgba(255,214,80,0.14)',  border: 'rgba(255,214,80,0.5)' },
+    daley:   { name: 'DALEY',   color: '#ff6b8a', fill: 'rgba(255,107,138,0.16)', border: 'rgba(255,107,138,0.6)' },
+    rue:     { name: 'RUE',     color: '#f0c088', fill: 'rgba(240,192,136,0.14)', border: 'rgba(240,192,136,0.55)' },
+    krampus: { name: 'KRAMPUS', color: '#ff5a3c', fill: 'rgba(255,90,60,0.16)',   border: 'rgba(255,90,60,0.6)' },
+    plop:    { name: 'PLOP',    color: '#ff8a4a', fill: 'rgba(255,138,74,0.15)',  border: 'rgba(255,138,74,0.6)' },
+    k3:      { name: 'K3',      color: '#ff8ad8', fill: 'rgba(255,138,216,0.15)', border: 'rgba(255,138,216,0.6)' },
+  };
+
+  /* Whoever turned up tonight. Santi, Daley and Rue have real art; the
+     rest are drawn, since a bald wizard is not the only thing in this
+     project that has to be invented from shapes. */
+  function nightFace(g, who, cx, cy, size) {
+    var key = who === 'santi' ? 'santi' : who === 'daley' ? 'daley'
+            : who === 'rue' ? 'rue-face' : null;
+    if (key && SG.art.faces[key]) {
+      g.drawImage(SG.art.faces[key], cx - size / 2, cy - size / 2, size, size);
+      return;
+    }
+    var r = size * 0.42;
+    g.save();
+    g.translate(cx, cy);
+    if (who === 'krampus') {
+      g.fillStyle = '#4a2318';
+      g.beginPath(); g.arc(0, 4, r, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#2e1610';                          // horns
+      [-1, 1].forEach(function (d) {
+        g.beginPath();
+        g.moveTo(d * r * 0.55, -r * 0.7);
+        g.quadraticCurveTo(d * r * 1.25, -r * 1.5, d * r * 0.8, -r * 1.75);
+        g.quadraticCurveTo(d * r * 0.85, -r * 1.1, d * r * 0.3, -r * 0.55);
+        g.closePath(); g.fill();
+      });
+      g.fillStyle = '#ffd24a';
+      g.beginPath(); g.ellipse(-r * 0.34, 0, r * 0.17, r * 0.13, 0, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.ellipse(r * 0.34, 0, r * 0.17, r * 0.13, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#1a0c08';
+      g.beginPath(); g.arc(-r * 0.34, 0, r * 0.07, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.arc(r * 0.34, 0, r * 0.07, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#e8555a';                          // tongue
+      g.beginPath(); g.ellipse(0, r * 0.62, r * 0.16, r * 0.32, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#fff';
+      for (var t2 = -2; t2 <= 2; t2++) {
+        g.beginPath();
+        g.moveTo(t2 * r * 0.2 - r * 0.07, r * 0.3);
+        g.lineTo(t2 * r * 0.2 + r * 0.07, r * 0.3);
+        g.lineTo(t2 * r * 0.2, r * 0.52);
+        g.closePath(); g.fill();
+      }
+    } else if (who === 'plop') {
+      g.fillStyle = '#e8b48c';                          // face
+      g.beginPath(); g.arc(0, r * 0.1, r * 0.72, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#fdfdfd';                          // beard
+      g.beginPath();
+      g.arc(0, r * 0.42, r * 0.72, 0.1, Math.PI - 0.1);
+      g.fill();
+      g.fillStyle = '#d63a2e';                          // the red hat
+      g.beginPath();
+      g.moveTo(-r * 0.95, -r * 0.28);
+      g.quadraticCurveTo(0, -r * 1.85, r * 0.95, -r * 0.28);
+      g.closePath(); g.fill();
+      g.fillStyle = '#1a1020';
+      g.beginPath(); g.arc(-r * 0.26, 0, r * 0.09, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.arc(r * 0.26, 0, r * 0.09, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#e8907a';
+      g.beginPath(); g.arc(0, r * 0.24, r * 0.15, 0, Math.PI * 2); g.fill();
+    } else {
+      // K3: three of them, in a row
+      var cols = ['#ffd24a', '#8a4a2a', '#3a2a1a'];
+      for (var i = 0; i < 3; i++) {
+        var ox = (i - 1) * r * 0.72;
+        g.fillStyle = cols[i];
+        g.beginPath(); g.arc(ox, -r * 0.18, r * 0.44, Math.PI, 0); g.fill();
+        g.fillStyle = '#e8b48c';
+        g.beginPath(); g.arc(ox, 0, r * 0.34, 0, Math.PI * 2); g.fill();
+        g.fillStyle = cols[i];
+        g.beginPath(); g.arc(ox, -r * 0.2, r * 0.36, Math.PI, 0); g.fill();
+        g.fillStyle = '#1a1020';
+        g.beginPath(); g.arc(ox - r * 0.12, r * 0.02, r * 0.05, 0, Math.PI * 2); g.fill();
+        g.beginPath(); g.arc(ox + r * 0.12, r * 0.02, r * 0.05, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = '#a0343a';
+        g.lineWidth = Math.max(1.4, r * 0.05);
+        g.beginPath(); g.arc(ox, r * 0.1, r * 0.12, 0.2, Math.PI - 0.2); g.stroke();
+      }
+    }
+    g.restore();
   }
 
   function drawPaused(g) {
@@ -1241,10 +1761,10 @@
     var f = SG.art.faces.santi;
     if (f) g.drawImage(f, CX - 44, 166, 88, 88);
 
-    SG.ui.text(g, TASKS.length + ' tasks done', CX, 282, { size: 18, color: '#fff', shadow: false });
+    SG.ui.text(g, st.plan.length + ' tasks done', CX, 282, { size: 18, color: '#fff', shadow: false });
     SG.art.drawWing(g, CX - 62, 314, 1.2, -0.3);
     SG.ui.text(g, '+' + st.wings + ' wings', CX - 42, 314, { size: 17, color: SG.COLORS.gold, align: 'left', shadow: false });
-    SG.ui.text(g, Math.floor(st.t) + 's · day ' + (SG.save.data.simDays || 1), CX, 344, {
+    SG.ui.text(g, Math.floor(st.t) + 's · day ' + st.day + ' · tomorrow is different', CX, 344, {
       size: 13, color: 'rgba(255,255,255,0.45)', shadow: false,
     });
 

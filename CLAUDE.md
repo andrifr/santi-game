@@ -116,6 +116,11 @@ Do **not** add a stale-pointer timeout: holding a direction for a whole
 level is legitimate input, and a timeout that expires mid-level is a
 worse bug than the one it fixes.
 
+Every mode that reads held input (Brawl's sticks, Pickleball's drag,
+Smurf World's pad) calls `releaseAll()` from its pause handler, so
+"press pause" is the universal way out. Wing Run and the Simulator read
+only taps and swipes and cannot latch.
+
 ### Art
 
 Source art lives in `assets/faces/` alongside its generated outputs. The
@@ -195,6 +200,10 @@ depth — an easy and near-invisible bug.
 - **After a boss takes a stomp, make him harmless for a beat.** Reverting
   him to his walk state leaves the player inside him on the bounce, so
   every landed hit costs a heart.
+- **An overlapping tap target must resolve to the nearest centre, not
+  the first match.** The Simulator picks objects by scanning a list; a
+  small prop standing in front of a big one was unreachable because the
+  big one's band was hit first and the loop broke.
 - **Nothing decorative goes on a playing surface.** Text or colour on the
   road or the court reads as an instruction and pulls the eye off what
   the player should be tracking. Graffiti belongs on walls and

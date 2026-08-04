@@ -140,7 +140,16 @@
 
     if (st.paused || st.phase !== 'fight') return;
 
-    if (SG.input.tappedRect(pauseRect())) { st.paused = true; SG.audio.play('back'); return; }
+    if (SG.input.tappedRect(pauseRect())) {
+      st.paused = true;
+      // Pausing lets go of every touch, so pause-and-resume clears a
+      // stick that the browser never told us had been released.
+      SG.input.releaseAll();
+      st.moveStick = null;
+      st.aim = null;
+      SG.audio.play('back');
+      return;
+    }
 
     var me = st.me;
     me.hurtT += dt;
