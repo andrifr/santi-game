@@ -405,9 +405,12 @@
   // Left of the shell's fullscreen button, which is fixed to the very
   // corner of the page and would swallow taps meant for this.
   function pauseRect() { return { x: SG.W - 106, y: 12, w: 40, h: 34 }; }
-  function padLeft() { return { x: 16, y: SG.H - 116, w: 98, h: 98 }; }
-  function padRight() { return { x: 124, y: SG.H - 116, w: 98, h: 98 }; }
-  function padJump() { return { x: SG.W - 142, y: SG.H - 122, w: 112, h: 112 }; }
+  /* Held clear of the very bottom edge: on an iPhone that strip is the
+     home-indicator gesture area, and a thumb parked there gets its touch
+     stolen by the system mid-press. */
+  function padLeft() { return { x: 16, y: SG.H - 132, w: 96, h: 96 }; }
+  function padRight() { return { x: 122, y: SG.H - 132, w: 96, h: 96 }; }
+  function padJump() { return { x: SG.W - 144, y: SG.H - 140, w: 110, h: 110 }; }
 
   /* The whole bottom-left corner steers, split down the middle. The
      arrows are only where the corner is drawn - a thumb that drifted a
@@ -576,6 +579,10 @@
     // handling below would starve it.
     if (SG.input.tappedRect(pauseRect()) || pressedEscape()) {
       st.paused = true;
+      // Pausing lets go of everything, so pause-and-resume is a way out
+      // of a touch the browser never told us about.
+      SG.input.releaseAll();
+      st.left = st.right = st.jumpHeld = st.jumpWas = false;
       SG.audio.play('back');
       return;
     }

@@ -159,7 +159,12 @@ gets you over a gnap, a hold gets you onto a ledge. Nothing in the game
 The whole bottom-left corner steers, split down the middle, not just the
 two drawn arrows. Both thumbs work at once and a thumb can slide from
 one side to the other without lifting — a dead zone between the arrows
-stops a player dead and reads as the game being broken.
+stops a player dead and reads as the game being broken. The pads sit
+clear of the very bottom edge, which on an iPhone belongs to the
+home-indicator gesture.
+
+If a direction ever does jam on, **pausing releases every touch** — as
+does leaving to the menu, or switching away from the app and back.
 
 **Stomp what you can, dodge what you can't.** Gnaps — Gargamel's hooded
 little helpers — die under your feet and pay out. **Azrael never dies**:

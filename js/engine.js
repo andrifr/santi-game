@@ -152,11 +152,32 @@
     input.anyDown = Object.keys(input.pointers).length > 0;
   }
 
+  /* Drop every live touch. A pointer that goes down and never reports
+     going up sticks in the map forever, and anything reading held input
+     then behaves as if a finger were welded to the screen. Scene
+     changes and backgrounding call this so there is always a way out
+     without relaunching. */
+  input.releaseAll = function () {
+    for (var id in input.pointers) delete input.pointers[id];
+    input.anyDown = false;
+  };
+
   if (window.PointerEvent) {
-    canvas.addEventListener('pointerdown', function (e) { e.preventDefault(); onDown(e.pointerId, e.clientX, e.clientY, e.pointerType); });
+    canvas.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      // Capture, so move and up for this finger come back here even if it
+      // wanders off the canvas or onto the fullscreen button. Without it
+      // iOS delivers the release somewhere else and the touch never ends.
+      try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+      onDown(e.pointerId, e.clientX, e.clientY, e.pointerType);
+    });
     canvas.addEventListener('pointermove', function (e) { onMove(e.pointerId, e.clientX, e.clientY); });
     canvas.addEventListener('pointerup', function (e) { onUp(e.pointerId); });
     canvas.addEventListener('pointercancel', function (e) { onUp(e.pointerId); });
+    // Backstops: capture can be lost, and iOS can retarget a release.
+    canvas.addEventListener('lostpointercapture', function (e) { onUp(e.pointerId); });
+    window.addEventListener('pointerup', function (e) { onUp(e.pointerId); });
+    window.addEventListener('pointercancel', function (e) { onUp(e.pointerId); });
   } else {
     canvas.addEventListener('touchstart', function (e) {
       e.preventDefault();
@@ -167,6 +188,12 @@
       for (var i = 0; i < e.changedTouches.length; i++) { var t = e.changedTouches[i]; onMove(t.identifier, t.clientX, t.clientY); }
     }, { passive: false });
     canvas.addEventListener('touchend', function (e) {
+      for (var i = 0; i < e.changedTouches.length; i++) onUp(e.changedTouches[i].identifier);
+    });
+    canvas.addEventListener('touchcancel', function (e) {
+      for (var i = 0; i < e.changedTouches.length; i++) onUp(e.changedTouches[i].identifier);
+    });
+    window.addEventListener('touchend', function (e) {
       for (var i = 0; i < e.changedTouches.length; i++) onUp(e.changedTouches[i].identifier);
     });
   }
@@ -1171,6 +1198,7 @@
     pendingGo = null;
     if (current && current.exit) current.exit();
     input.clear();
+    input.releaseAll();          // a stuck touch must not outlive the scene
     SG.clearParticles();
     current = scenes[next.name];
     if (current.enter) current.enter(next.params);
@@ -1185,7 +1213,7 @@
     last = now;
     if (dt > 0.05) dt = 0.05;       // tab-switch / hitch guard
     applyGo();
-    if (!running) { input.clear(); return; }
+    if (!running) { input.clear(); input.releaseAll(); return; }
 
     if (current && current.update) current.update(dt);
     updateParticles(dt);
@@ -1231,10 +1259,18 @@
 
   SG.pauseLoop = function (v) { running = !v; last = 0; };
 
+  /* Anything that takes the screen away - a notification, the app
+     switcher, a call - can swallow the release for a finger that was
+     down. Treat losing focus as every finger lifting. */
   document.addEventListener('visibilitychange', function () {
-    if (document.hidden && current && current.onBlur) current.onBlur();
+    if (document.hidden) {
+      input.releaseAll();
+      if (current && current.onBlur) current.onBlur();
+    }
     last = 0;
   });
+  window.addEventListener('blur', function () { input.releaseAll(); });
+  window.addEventListener('pagehide', function () { input.releaseAll(); });
 
   // ---------------------------------------------------------------
   // Fullscreen / orientation / iOS add-to-home-screen

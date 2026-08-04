@@ -94,6 +94,28 @@ Two consequences worth knowing:
 mouse is always the aim and is never mistaken for the left-hand movement
 stick.
 
+**A pointer only leaves `pointers` when its release arrives.** If it
+never does, anything reading held input behaves as though a finger were
+welded to the screen — and because the map lives in the engine, it
+survives `reset()`, scene changes and the menu. Only a reload cleared
+it, which is exactly how it was reported: *"restarting the level didn't
+work, closing the app did."* iPhone only, because the bottom edge is
+the home-indicator gesture area and the release gets delivered
+elsewhere. Defences, all in `engine.js`:
+
+- `setPointerCapture` on pointerdown, so move/up come back to the canvas
+  even if the finger wanders off it.
+- `pointerup`/`pointercancel` listeners on `window` as well as the
+  canvas, plus `lostpointercapture`.
+- `SG.input.releaseAll()` — called on scene change, on
+  `visibilitychange`, on window blur/pagehide, and while the loop is
+  paused. Call it from a mode's pause handler too, so pausing is a way
+  out.
+
+Do **not** add a stale-pointer timeout: holding a direction for a whole
+level is legitimate input, and a timeout that expires mid-level is a
+worse bug than the one it fixes.
+
 ### Art
 
 Source art lives in `assets/faces/` alongside its generated outputs. The
@@ -171,6 +193,9 @@ depth — an easy and near-invisible bug.
   road or the court reads as an instruction and pulls the eye off what
   the player should be tracking. Graffiti belongs on walls and
   billboards. (Established by user feedback; applies to all modes.)
+- **Touch controls belong clear of the bottom edge of the screen.** On
+  an iPhone that strip is the home-indicator gesture area; a thumb
+  parked there has its touch taken by the system mid-press.
 - **Image previews may ignore alpha.** Several source cutouts look like
   they still have a background when they do not. Check the alpha channel
   before "fixing" it — a background-removal pass on an already-cut image
