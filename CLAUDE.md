@@ -151,6 +151,12 @@ One `localStorage` key (`santigame.v1`). **Chicken wings are the shared
 currency** — every mode pays into `save.data.wings`. Bank them as they're
 earned, not at the end of a run.
 
+Smurf World collects **waffles** and trades them for wings at 5:1. That
+exchange still counts as banking-as-you-earn because it runs whenever a
+level ends — cleared, died, restarted *or* quit to the menu — so putting
+the phone down never costs anything. If you add another end-of-level
+route out of a mode, it has to call `cashIn()` too.
+
 ### Audio
 
 All effects are synthesized (`SG.audio.play(name)`), so there is no load

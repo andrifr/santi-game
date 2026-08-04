@@ -184,8 +184,34 @@ a cage in his lair — beat him and the door comes off its hinges.
 
 Levels are built from hand-made chunks laid end to end, so no two runs
 are the same shape, but every chunk starts and ends on solid ground —
-there is no join that can't be jumped. **Sarsaparilla** pays 4 wings a
-leaf, a cleared level 80, and Gargamel 260.
+there is no join that can't be jumped.
+
+**Waffles are the currency**, because a Belgian recipient deserves
+Belgian money. They lie around the levels and they fall out of bricks
+you headbutt from underneath — some bricks hold three. Every brick and
+box hangs low enough that a *tapped* jump reaches its underside.
+
+At the end of each level the waffles are **traded for chicken wings** at
+5:1, and you watch the count tick over. It happens on a clear, on a
+death, on a restart and on quitting to the menu, so stopping never costs
+you the ones you found. A cleared level pays 80 wings on top, Gargamel
+260.
+
+**Question boxes** hold one of three:
+
+| | |
+| --- | --- |
+| **Hot sauce** | 35% faster for 8s, with a trail |
+| **Golden wing** | untouchable for 8s — nothing hurts you and anything you walk into is destroyed |
+| **Red mushroom** | **BIG SANTI** for 7s: he grows for real, hitbox and all, and barges enemies over instead of taking damage |
+
+Big Santi flashes for the last two seconds so the shrink is never a
+surprise. Take a hit while big and it costs the power-up rather than a
+heart.
+
+The flag at the end of each level flies **Gargamel's** colours until
+Santi reaches the pole. Then his banner drops and the smurf flag climbs
+the pole in its place.
 
 **The lair.** He throws potions that leave acid where they land, and
 summons gnaps. He can't be touched on his feet — but every so often he

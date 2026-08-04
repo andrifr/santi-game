@@ -21,6 +21,21 @@
   var PW = 34;                 // collision width
   var PBH = 84;                // collision height
 
+  /* Big Santi is genuinely bigger, box and all. `grow` runs 0..1 over
+     the transition so the box changes with the drawing instead of
+     popping, and `unstick` covers the case where he sprouts under a
+     brick. */
+  var BIG_W = 0.18, BIG_H = 0.30;
+  function pw() { return PW * (1 + BIG_W * st.p.grow); }
+  function ph() { return PBH * (1 + BIG_H * st.p.grow); }
+
+  // ---- power-ups ---------------------------------------------------
+  var BIG_TIME = 7, SAUCE_TIME = 8, GOLD_TIME = 8;
+  var WARN_TIME = 2;           // flashing "about to run out" window
+  var SAUCE_MULT = 1.35;
+  var BLOCK = 42;              // brick / question box, square
+  var WAFFLE_WINGS = 5;        // what one waffle is worth in chicken wings
+
   /* Rising under a held jump uses GRAV_HOLD, everything else GRAV.
      620^2 / (2*1450) = 132px held, 620^2 / (2*2900) = 66px tapped -
      so a tap clears a gnap and a full hold clears a 96px block. */
@@ -36,8 +51,8 @@
      jump (66px), not a fully held one - held at 96px he was literally
      unkillable for anyone who taps the button. */
   var DIZZY_H = 58;
-  var GEM_WINGS = 4, CLEAR_WINGS = 80, BOSS_WINGS = 260;
-  var GEM_PTS = 100, STOMP_PTS = 150, CLEAR_PTS = 500, BOSS_PTS = 2500;
+  var CLEAR_WINGS = 80, BOSS_WINGS = 260;
+  var WAFFLE_PTS = 100, STOMP_PTS = 150, CLEAR_PTS = 500, BOSS_PTS = 2500;
 
   var st;
 
@@ -116,6 +131,25 @@
         b.solids.push(m);
         b.movers.push(m);
       },
+      /* Bricks and question boxes are ordinary solids - you stand on
+         them and you bonk them - hung so their underside sits inside a
+         TAPPED jump's reach, not just a held one. */
+      brick: function (x, n) {
+        b.solids.push({ x: x, y: BASE_Y - 188, w: BLOCK, h: BLOCK, kind: 'brick', left: n || 1, bump: 0 });
+      },
+      qbox: function (x, power) {
+        b.solids.push({ x: x, y: BASE_Y - 188, w: BLOCK, h: BLOCK, kind: 'qbox', power: power, used: false, bump: 0 });
+      },
+      bricks: function (x, spec) {
+        // spec: string of 'b' brick, 'B' 3-waffle brick, '?' box, '.' gap
+        for (var i = 0; i < spec.length; i++) {
+          var bx = x + i * BLOCK;
+          if (spec[i] === 'b') b.brick(bx, 1);
+          else if (spec[i] === 'B') b.brick(bx, 3);
+          else if (spec[i] === '?') b.qbox(bx, SG.pick(['sauce', 'gold', 'big']));
+          else if (spec[i] === 'm') b.qbox(bx, 'big');
+        }
+      },
       gem: function (x, y) { b.gems.push({ x: x, y: y, got: 0, phase: x * 0.01 }); },
       row: function (x, y, n, step) { for (var i = 0; i < n; i++) b.gem(x + i * (step || 46), y); },
       arc: function (x0, w, y) {
@@ -140,8 +174,20 @@
       b.ground(x, 460);
       b.foe('gnap', x + 260, BASE_Y);
       b.row(x + 130, BASE_Y - 76, 3);
-      if (d > 1) b.foe('bat', x + 330, BASE_Y - 206);
+      b.bricks(x + 150, 'b?b');
+      if (d > 1) b.foe('bat', x + 330, BASE_Y - 252);   // clear of the brick row
       return 460;
+    },
+
+    // The classic: a run of bricks with a box buried in it.
+    blocks: function (b, x, d) {
+      b.ground(x, 620);
+      b.bricks(x + 110, 'bB?b');
+      b.bricks(x + 320, '.b?');
+      b.foe('gnap', x + 460, BASE_Y);
+      b.row(x + 120, BASE_Y - 76, 3);
+      if (d > 0) b.foe('gnap', x + 200, BASE_Y);
+      return 620;
     },
 
     hop: function (b, x, d) {
@@ -200,7 +246,8 @@
       b.foe('gnap', x + 300, BASE_Y - 120);
       b.foe('gnap', x + 570, BASE_Y);
       b.row(x + 210, BASE_Y - 172, 4);
-      if (d > 1) b.foe('bat', x + 612, BASE_Y - 226);
+      b.bricks(x + 480, 'bb');
+      if (d > 1) b.foe('bat', x + 612, BASE_Y - 252);   // clear of the brick row
       return 700;
     },
 
@@ -254,9 +301,9 @@
   };
 
   var SETS = [
-    ['flat', 'hop', 'steps', 'patrol', 'island', 'bounce'],
-    ['hop', 'steps', 'island', 'plateau', 'bounce', 'patrol', 'cat', 'ride', 'towers'],
-    ['island', 'plateau', 'cat', 'ride', 'towers', 'chasm', 'patrol', 'hop'],
+    ['flat', 'hop', 'steps', 'patrol', 'island', 'bounce', 'blocks'],
+    ['hop', 'steps', 'island', 'plateau', 'bounce', 'patrol', 'cat', 'ride', 'towers', 'blocks'],
+    ['island', 'plateau', 'cat', 'ride', 'towers', 'chasm', 'patrol', 'hop', 'blocks'],
   ];
 
   function buildLevel(idx) {
@@ -271,6 +318,9 @@
     // first thing he does is never a reaction.
     b.ground(x, 560);
     b.row(x + 260, BASE_Y - 76, 3);
+    // Every level opens with a box, so the mechanic is met before it
+    // is ever needed.
+    b.bricks(x + 300, 'b?b');
     x += 560;
 
     var set = SETS[L.d], last = null;
@@ -296,6 +346,8 @@
     b.plat(250, BASE_Y - 150, 190);
     b.plat(1080, BASE_Y - 150, 190);
     b.spring(770);
+    // Something to arm yourself with before he notices you.
+    b.bricks(520, 'b?b');
     return finish(L, th, b, 1560, -1);
   }
 
@@ -363,7 +415,10 @@
   // ---------------------------------------------------------------
   // State
   // ---------------------------------------------------------------
-  function reset(levelIdx, keepScore) {
+  // `carry` moves the run's running totals into the next level. A bare
+  // number is accepted as just the score.
+  function reset(levelIdx, carry) {
+    carry = typeof carry === 'number' ? { score: carry } : (carry || {});
     var lv = buildLevel(levelIdx);
     st = {
       levelIdx: levelIdx,
@@ -372,9 +427,11 @@
       paused: false,
       t: 0,
       cam: 0,
-      score: keepScore || 0,
-      gems: 0,
-      wings: 0,
+      score: carry.score || 0,
+      waffles: 0,                          // this level, cashed in when it ends
+      waffleTotal: carry.waffleTotal || 0, // whole run, for the final tally
+      cashed: 0,                           // what the last cash-in converted
+      wings: carry.wings || 0,
       hearts: HEARTS,
       msg: null, msgT: 0,
       shots: [], puddles: [],
@@ -385,7 +442,9 @@
         x: 120, y: BASE_Y, vx: 0, vy: 0, facing: 1, phase: 0,
         grounded: false, coyote: 0, rise: false, prevY: BASE_Y,
         iFrames: 0, ride: null,
+        grow: 0, bigT: 0, sauceT: 0, goldT: 0, popT: 0,
       },
+      pops: [], items: [],
       safe: { x: 120, y: BASE_Y },
       safeT: 0,
       boss: lv.boss ? {
@@ -482,13 +541,13 @@
     for (var i = 0; i < list.length; i++) {
       var s = list[i];
       if (s.oneWay) continue;
-      if (!overlapX(p.x, PW / 2, s)) continue;
-      if (p.y <= s.y || p.y - PBH >= s.y + s.h) continue;
-      if (dx > 0) p.x = s.x - PW / 2;
-      else if (dx < 0) p.x = s.x + s.w + PW / 2;
+      if (!overlapX(p.x, pw() / 2, s)) continue;
+      if (p.y <= s.y || p.y - ph() >= s.y + s.h) continue;
+      if (dx > 0) p.x = s.x - pw() / 2;
+      else if (dx < 0) p.x = s.x + s.w + pw() / 2;
       p.vx = 0;
     }
-    p.x = SG.clamp(p.x, PW / 2, st.lv.width - PW / 2);
+    p.x = SG.clamp(p.x, pw() / 2, st.lv.width - pw() / 2);
   }
 
   /* Landing is a swept test against where the feet were last frame -
@@ -503,7 +562,7 @@
     var list = solids();
     for (var i = 0; i < list.length; i++) {
       var s = list[i];
-      if (!overlapX(p.x, PW / 2 - 3, s)) continue;
+      if (!overlapX(p.x, pw() / 2 - 3, s)) continue;
       var top = s.y, bot = s.y + s.h;
 
       if (dy >= 0 && p.y >= top && prev <= top + 1) {
@@ -512,9 +571,10 @@
         p.grounded = true;
         p.rise = false;
         if (s.span) p.ride = s;
-      } else if (!s.oneWay && dy < 0 && p.y - PBH < bot && prev - PBH >= bot - 1) {
-        p.y = bot + PBH;
+      } else if (!s.oneWay && dy < 0 && p.y - ph() < bot && prev - ph() >= bot - 1) {
+        p.y = bot + ph();
         p.vy = 0;
+        if (s.kind === 'brick' || s.kind === 'qbox') hitBlock(s);
       }
     }
     if (p.grounded) p.coyote = COYOTE;
@@ -527,14 +587,99 @@
     for (var i = 0; i < list.length; i++) {
       var s = list[i];
       if (s.oneWay) continue;
-      if (!overlapX(p.x, PW / 2, s)) continue;
-      if (p.y <= s.y || p.y - PBH >= s.y + s.h) continue;
+      if (!overlapX(p.x, pw() / 2, s)) continue;
+      if (p.y <= s.y || p.y - ph() >= s.y + s.h) continue;
       var up = p.y - s.y;                       // lift to stand on it
-      var lf = p.x + PW / 2 - s.x;              // push out left
-      var rt = s.x + s.w - (p.x - PW / 2);      // push out right
+      var lf = p.x + pw() / 2 - s.x;              // push out left
+      var rt = s.x + s.w - (p.x - pw() / 2);      // push out right
       if (up <= lf && up <= rt) { p.y = s.y; p.vy = Math.min(p.vy, 0); p.grounded = true; }
       else if (lf < rt) p.x -= lf;
       else p.x += rt;
+    }
+  }
+
+  /* Bonked from underneath. A brick coughs up a waffle each time until
+     it is empty; a question box gives up its power-up once and then
+     sits there spent. */
+  function hitBlock(s) {
+    s.bump = 1;
+    if (s.kind === 'qbox') {
+      if (s.used) { SG.audio.play('bounce'); return; }
+      s.used = true;
+      st.items.push({
+        x: s.x + s.w / 2, x0: s.x + s.w / 2, y: s.y, y0: s.y, vy: 0, vx: 0,
+        power: s.power, born: 0, out: 0, grounded: false, vxSet: false, from: s,
+      });
+      SG.audio.play('record');
+      return;
+    }
+    if (s.left <= 0) { SG.audio.play('bounce'); return; }
+    s.left--;
+    st.pops.push({ x: s.x + s.w / 2, y: s.y, t: 0 });
+    st.waffles++;
+    st.score += WAFFLE_PTS;
+    SG.audio.play('wing');
+    SG.burst(s.x + s.w / 2, s.y - 6, 5, { colors: ['#f0b453', '#fff2c8'], speedMax: 130, lift: 60, gravity: 700 });
+  }
+
+  function updatePops(dt) {
+    for (var i = st.pops.length - 1; i >= 0; i--) {
+      st.pops[i].t += dt;
+      if (st.pops[i].t > 0.55) st.pops.splice(i, 1);
+    }
+  }
+
+  /* A power-up rises out of its box, steps off the side of it and drops
+     to the floor beside you - the top of a box is above a full jump, so
+     anything left up there may as well not exist. Once it is down it
+     stays put and drifts towards you if you come near, because a
+     power-up you chase across the level and lose is worse than none. */
+  function updateItems(dt) {
+    var p = st.p;
+    for (var i = st.items.length - 1; i >= 0; i--) {
+      var it = st.items[i];
+      it.born += dt;
+
+      if (it.out < 1) {
+        it.out = Math.min(1, it.out + dt * 2.6);
+        it.y = it.y0 - it.out * (BLOCK + 8);
+        continue;
+      }
+
+      if (!it.grounded) {
+        // step off the box, then fall
+        if (!it.vxSet) {
+          var away = p.x <= it.x ? 1 : -1;         // away from the player's side
+          it.vx = away * 70;
+          it.vxSet = true;
+        }
+        if (Math.abs(it.x - it.x0) > BLOCK / 2 + 14) it.vx = 0;
+        it.x += it.vx * dt;
+        it.vy = Math.min(it.vy + 1800 * dt, 900);
+        var prevY = it.y;
+        it.y += it.vy * dt;
+
+        var list = solids();
+        for (var s = 0; s < list.length; s++) {
+          var so = list[s];
+          if (so === it.from) continue;            // fall past its own box
+          if (it.x < so.x || it.x > so.x + so.w) continue;
+          if (it.vy >= 0 && it.y >= so.y && prevY <= so.y + 1) {
+            it.y = so.y; it.vy = 0; it.grounded = true;
+          }
+        }
+      } else if (Math.abs(it.x - p.x) < 110) {
+        // close enough to be worth coming to him
+        it.x += (p.x > it.x ? 1 : -1) * 90 * dt;
+      }
+
+      if (it.y > DEATH_Y) { st.items.splice(i, 1); continue; }
+
+      if (Math.abs(it.x - p.x) < pw() / 2 + 24 && it.y > p.y - ph() - 20 && it.y < p.y + 34) {
+        st.items.splice(i, 1);
+        givePower(it.power);
+        st.score += 200;
+      }
     }
   }
 
@@ -594,6 +739,9 @@
     if (st.boss) updateBoss(dt);
     updateShots(dt);
     updateGems(dt);
+    updatePops(dt);
+    updateItems(dt);
+    updateBlocks(dt);
     updateSprings(dt);
     updateCam(dt);
 
@@ -605,6 +753,13 @@
       if (SG.input.taps[i].key === 'Escape') { SG.input.taps.splice(i, 1); return true; }
     }
     return false;
+  }
+
+  function updateBlocks(dt) {
+    var list = solids();
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].bump > 0) list[i].bump = Math.max(0, list[i].bump - dt * 5);
+    }
   }
 
   function updateMovers(dt) {
@@ -626,10 +781,12 @@
     if (p.iFrames > 0) p.iFrames -= dt;
     if (p.coyote > 0) p.coyote -= dt;
     if (st.jumpBuf > 0) st.jumpBuf -= dt;
+    updatePowers(dt);
 
     // Carried by whatever he is standing on.
     if (p.ride && p.ride.step) moveX(p, p.ride.step);
 
+    var top = RUN * (p.sauceT > 0 ? SAUCE_MULT : 1);
     var want = (st.right ? 1 : 0) - (st.left ? 1 : 0);
     if (want) {
       var acc = p.grounded ? ACCEL : AIR_ACCEL;
@@ -640,7 +797,7 @@
       var drop = FRICTION * dt;
       p.vx = Math.abs(p.vx) <= drop ? 0 : p.vx - Math.sign(p.vx) * drop;
     }
-    p.vx = SG.clamp(p.vx, -RUN, RUN);
+    p.vx = SG.clamp(p.vx, -top, top);
 
     if (st.jumpBuf > 0 && (p.grounded || p.coyote > 0)) jump(p);
 
@@ -665,6 +822,65 @@
     }
 
     if (p.y > DEATH_Y) fell();
+  }
+
+  /* Power-up clocks and the grow/shrink transition.
+
+     The change of size has to be impossible to miss, so it is not a
+     straight ramp: growing overshoots and settles, the last couple of
+     seconds pulse, and both ends fire particles and a sound. A player
+     who cannot tell whether a power-up is on is playing a different
+     game from the one you tuned. */
+  function updatePowers(dt) {
+    var p = st.p;
+    if (p.sauceT > 0) p.sauceT = Math.max(0, p.sauceT - dt);
+    if (p.goldT > 0) {
+      p.goldT = Math.max(0, p.goldT - dt);
+      if (p.goldT === 0) SG.audio.play('back');
+    }
+
+    if (p.bigT > 0) {
+      p.bigT = Math.max(0, p.bigT - dt);
+      if (p.bigT === 0) {
+        SG.audio.play('back');
+        SG.burst(p.x, p.y - PBH * 0.5, 16, { colors: ['#fff', '#8fd4ff'], speedMax: 200, gravity: 500 });
+      }
+    }
+
+    var want = p.bigT > 0 ? 1 : 0;
+    var rate = want ? 4.2 : 5.5;                 // grow slower than it shrinks
+    p.grow += (want - p.grow) * Math.min(1, dt * rate);
+    if (Math.abs(want - p.grow) < 0.004) p.grow = want;
+
+    // A visible wobble on the way up, and a pulse when time is nearly out.
+    p.popT = p.popT > 0 ? Math.max(0, p.popT - dt) : 0;
+  }
+
+  function givePower(kind) {
+    var p = st.p;
+    if (kind === 'sauce') {
+      p.sauceT = SAUCE_TIME;
+      say('HOT SAUCE', SG.COLORS.sauce);
+      SG.audio.play('sauce');
+      SG.burst(p.x, p.y - PBH * 0.6, 18, { colors: ['#ff7a2a', '#ffd66a'], speedMax: 240 });
+    } else if (kind === 'gold') {
+      p.goldT = GOLD_TIME;
+      say('UNTOUCHABLE', SG.COLORS.gold);
+      SG.audio.play('power');
+      SG.burst(p.x, p.y - PBH * 0.6, 24, { colors: ['#ffd66a', '#fff', '#ffb02e'], speedMax: 280 });
+    } else {
+      p.bigT = BIG_TIME;
+      p.popT = 0.45;                              // the grow wobble
+      say('BIG SANTI', '#7ee08a');
+      SG.audio.play('power');
+      SG.burst(p.x, p.y - PBH * 0.6, 22, { colors: ['#7ee08a', '#fff', '#e14a4a'], speedMax: 240 });
+      SG.shake(6);
+    }
+  }
+
+  function bigFlashing() {
+    // last seconds of BIG: pulse so the drop back down is expected
+    return st.p.bigT > 0 && st.p.bigT < WARN_TIME && Math.floor(st.p.bigT * 8) % 2 === 0;
   }
 
   function jump(p) {
@@ -712,11 +928,10 @@
       var m = gems[i];
       if (m.got) { m.got += dt; continue; }
       if (Math.abs(m.x - p.x) > 40) continue;
-      if (m.y < p.y - PBH - 26 || m.y > p.y + 26) continue;
+      if (m.y < p.y - ph() - 26 || m.y > p.y + 26) continue;
       m.got = 0.001;
-      st.gems++;
-      st.score += GEM_PTS;
-      bankWings(GEM_WINGS);
+      st.waffles++;
+      st.score += WAFFLE_PTS;
       SG.audio.play('wing');
       SG.burst(m.x, m.y, 8, { colors: ['#7ee08a', '#e14a4a', '#fff2b0'], speedMax: 190, gravity: 620 });
     }
@@ -728,6 +943,20 @@
     SG.save.write();
   }
 
+  /* Waffles are the currency you see while playing; chicken wings are
+     the currency the rest of the game runs on. Cashing in happens
+     whenever a level ends - cleared, died, or quit - so the exchange is
+     something you watch happen, and nothing is ever lost by stopping. */
+  function cashIn() {
+    var n = st.waffles;
+    if (n <= 0) return 0;
+    st.waffleTotal += n;
+    st.waffles = 0;
+    st.cashed = n;
+    bankWings(n * WAFFLE_WINGS);
+    return n;
+  }
+
   // ---------------------------------------------------------------
   function updateFoes(dt) {
     var p = st.p;
@@ -736,10 +965,14 @@
       if (f.dead) { f.dead += dt; continue; }
 
       if (f.fly) {
-        f.x += f.dir * f.speed * dt;
-        if (f.x < f.x0 - 110) f.dir = 1;
-        if (f.x > f.x0 + 110) f.dir = -1;
-        f.y = f.y0 + Math.sin(st.t * 2.4 + f.phase) * 46;
+        if (f.stun > 0) {
+          f.stun -= dt;                         // knocked silly, hanging there
+        } else {
+          f.x += f.dir * f.speed * dt;
+          if (f.x < f.x0 - 110) f.dir = 1;
+          if (f.x > f.x0 + 110) f.dir = -1;
+          f.y = f.y0 + Math.sin(st.t * 2.4 + f.phase) * 46;
+        }
       } else {
         if (f.stun > 0) {
           f.stun -= dt;
@@ -792,8 +1025,8 @@
   function touchFoe(f, dt) {
     var p = st.p;
     var dx = Math.abs(p.x - f.x);
-    if (dx > PW / 2 + f.w / 2) return;
-    if (p.y < f.y - f.h || p.y - PBH > f.y) return;
+    if (dx > pw() / 2 + f.w / 2) return;
+    if (p.y < f.y - f.h || p.y - ph() > f.y) return;
 
     // Coming down on anything above his waist is a stomp.
     var fromAbove = p.vy > 0 && p.prevY <= f.y - f.h * 0.45;
@@ -813,17 +1046,49 @@
       }
       return;
     }
-    if (f.kind === 'azrael' && f.stun > 0) return;
+    if (f.stun > 0) return;
+
+    // Untouchable: anything he walks into is simply gone.
+    if (p.goldT > 0) {
+      if (f.kind === 'azrael') { f.stun = 3; SG.audio.play('smash'); }
+      else { f.dead = 0.01; st.score += STOMP_PTS; SG.audio.play('pop'); }
+      SG.burst(f.x, f.y - f.h * 0.5, 14, { colors: ['#ffd66a', '#fff', '#ffb02e'], speedMax: 260 });
+      return;
+    }
+
+    // Big Santi barges through them. They pick themselves up after.
+    if (p.grow > 0.55) {
+      f.stun = 2.4;
+      f.vy = -240;
+      f.x += (f.x > p.x ? 1 : -1) * 14;
+      st.score += 80;
+      SG.audio.play('smash');
+      SG.shake(5);
+      SG.burst(f.x, f.y - f.h * 0.5, 10, { colors: ['#fff', '#7ee08a'], speedMax: 200 });
+      return;
+    }
+
     // The hurt box is narrower than the drawing, never wider. Losing a
     // heart to a gap you can see daylight through is the worst feeling
     // a platformer has.
-    if (dx > PW / 2 + f.hitW / 2) return;
+    if (dx > pw() / 2 + f.hitW / 2) return;
     hurt();
   }
 
   function hurt() {
     var p = st.p;
     if (p.iFrames > 0 || st.phase !== 'play') return;
+    if (p.goldT > 0) return;                    // nothing lands while untouchable
+    // Being big absorbs the hit and costs the power-up instead of a heart.
+    if (p.grow > 0.55) {
+      p.bigT = 0;
+      p.iFrames = 1.2;
+      p.vx = -p.facing * 200;
+      SG.audio.play('back');
+      SG.burst(p.x, p.y - PBH * 0.5, 18, { colors: ['#fff', '#8fd4ff'], speedMax: 220 });
+      SG.shake(8);
+      return;
+    }
     st.hearts--;
     p.iFrames = 1.5;
     p.vx = -p.facing * 260;
@@ -847,6 +1112,7 @@
   }
 
   function die() {
+    cashIn();
     st.phase = 'dead';
     st.endT = 0;
     SG.audio.play('crash');
@@ -857,6 +1123,7 @@
   }
 
   function clearLevel() {
+    cashIn();
     st.phase = 'clear';
     st.endT = 0;
     st.score += CLEAR_PTS;
@@ -961,7 +1228,7 @@
     // contact
     var head = BASE_Y - (G.state === 'dizzy' ? DIZZY_H : 168);
     var halfW = G.state === 'dizzy' ? 62 : 46;
-    if (Math.abs(p.x - G.x) < PW / 2 + halfW && p.y > head && p.y - PBH < BASE_Y) {
+    if (Math.abs(p.x - G.x) < pw() / 2 + halfW && p.y > head && p.y - ph() < BASE_Y) {
       if (G.state === 'dizzy' && p.vy > 40 && p.prevY <= head + 22) {
         G.hp--;
         // Harmless while he reels. Without this the bounce off his head
@@ -1007,7 +1274,7 @@
         SG.burst(s.x, BASE_Y - 8, 14, { colors: ['#7ee08a', '#4dd47a', '#d8ff9a'], speedMax: 220, lift: 40 });
         continue;
       }
-      if (Math.abs(s.x - p.x) < PW / 2 + 12 && s.y > p.y - PBH && s.y < p.y) {
+      if (Math.abs(s.x - p.x) < pw() / 2 + 12 && s.y > p.y - ph() && s.y < p.y) {
         st.shots.splice(i, 1);
         hurt();
       }
@@ -1022,6 +1289,7 @@
   }
 
   function winGame() {
+    cashIn();
     st.phase = 'win';
     st.endT = 0;
     st.score += BOSS_PTS;
@@ -1052,6 +1320,8 @@
     drawSprings(g, cam);
     if (st.lv.flagX > 0) drawFlag(g, cam);
     drawGems(g, cam);
+    drawPops(g, cam);
+    drawItems(g, cam);
     drawPuddles(g, cam);
     drawFoes(g, cam);
     if (st.boss) drawGargamel(g, cam);
@@ -1437,9 +1707,161 @@
       var s = list[i];
       var x = s.x - cam;
       if (x + s.w < -60 || x > SG.W + 60) continue;
-      if (s.oneWay) drawToadstool(g, x, s.y, s.w, !!s.span);
+      if (s.kind === 'brick' || s.kind === 'qbox') drawBlock(g, x, s);
+      else if (s.oneWay) drawToadstool(g, x, s.y, s.w, !!s.span);
       else drawGround(g, x, s.y, s.w, s.h, th, s);
     }
+  }
+
+  function drawBlock(g, x, s) {
+    var y = s.y - s.bump * 9;                  // jolts up when bonked
+    var w = s.w, h = s.h;
+    g.save();
+    if (s.kind === 'qbox') {
+      var spent = s.used;
+      g.fillStyle = spent ? '#7a6a52' : '#e2a32c';
+      SG.roundRect(g, x, y, w, h, 5);
+      g.fill();
+      g.fillStyle = spent ? '#6a5c47' : '#c2861d';
+      g.fillRect(x, y + h - 7, w, 7);
+      g.strokeStyle = 'rgba(50,32,10,0.6)';
+      g.lineWidth = 2.5;
+      SG.roundRect(g, x, y, w, h, 5);
+      g.stroke();
+      // rivets
+      g.fillStyle = spent ? 'rgba(255,255,255,0.15)' : 'rgba(255,240,190,0.75)';
+      [[6, 6], [w - 6, 6], [6, h - 6], [w - 6, h - 6]].forEach(function (d) {
+        g.beginPath(); g.arc(x + d[0], y + d[1], 2.4, 0, Math.PI * 2); g.fill();
+      });
+      if (!spent) {
+        var bob = Math.sin(st.t * 4) * 1.2;
+        SG.ui.text(g, '?', x + w / 2, y + h / 2 + bob, {
+          size: 27, color: '#fff8e0', stroke: '#7a4a08', strokeWidth: 5, shadow: false,
+        });
+      }
+    } else {
+      var empty = s.left <= 0;
+      g.fillStyle = empty ? '#6d5a48' : '#a5713f';
+      SG.roundRect(g, x, y, w, h, 4);
+      g.fill();
+      g.strokeStyle = 'rgba(52,30,12,0.65)';
+      g.lineWidth = 2.5;
+      SG.roundRect(g, x, y, w, h, 4);
+      g.stroke();
+      // courses of brick, offset row to row
+      g.strokeStyle = 'rgba(52,30,12,0.45)';
+      g.lineWidth = 2;
+      for (var r = 1; r < 3; r++) {
+        g.beginPath();
+        g.moveTo(x + 2, y + r * (h / 3)); g.lineTo(x + w - 2, y + r * (h / 3));
+        g.stroke();
+      }
+      for (var r2 = 0; r2 < 3; r2++) {
+        var vx = x + (r2 % 2 ? w / 2 : w / 4);
+        g.beginPath();
+        g.moveTo(vx, y + r2 * (h / 3) + 2); g.lineTo(vx, y + (r2 + 1) * (h / 3) - 2);
+        g.stroke();
+        if (r2 % 2 === 0) {
+          g.beginPath();
+          g.moveTo(vx + w / 2, y + r2 * (h / 3) + 2); g.lineTo(vx + w / 2, y + (r2 + 1) * (h / 3) - 2);
+          g.stroke();
+        }
+      }
+      if (!empty) {
+        g.fillStyle = 'rgba(255,255,255,0.18)';
+        g.fillRect(x + 3, y + 3, w - 6, 3);
+      }
+    }
+    g.restore();
+  }
+
+  function drawPops(g, cam) {
+    for (var i = 0; i < st.pops.length; i++) {
+      var q = st.pops[i];
+      var k = q.t / 0.55;
+      g.save();
+      g.globalAlpha = 1 - k * k;
+      g.translate(q.x - cam, q.y - 10 - k * 62);
+      waffle(g, 0.9);
+      g.restore();
+    }
+  }
+
+  function drawItems(g, cam) {
+    for (var i = 0; i < st.items.length; i++) {
+      var it = st.items[i];
+      var x = it.x - cam;
+      if (x < -60 || x > SG.W + 60) continue;
+      var bob = it.out >= 1 && it.grounded ? Math.sin(st.t * 5) * 2.5 : 0;
+      g.save();
+      g.translate(x, it.y - 20 + bob);
+      if (it.power === 'sauce') drawSauceBottle(g);
+      else if (it.power === 'gold') drawGoldWing(g);
+      else drawGrowShroom(g);
+      g.restore();
+    }
+  }
+
+  // Hot sauce: speed. Santi's own condiment.
+  function drawSauceBottle(g) {
+    g.fillStyle = '#d9501f';
+    SG.roundRect(g, -8, -12, 16, 26, 5);
+    g.fill();
+    g.strokeStyle = 'rgba(60,20,8,0.6)';
+    g.lineWidth = 2;
+    g.stroke();
+    g.fillStyle = '#7a3010';
+    SG.roundRect(g, -4, -18, 8, 7, 2);
+    g.fill();
+    g.fillStyle = '#fff2c8';
+    SG.roundRect(g, -6, -4, 12, 9, 2);
+    g.fill();
+    g.fillStyle = '#d9501f';
+    g.beginPath();
+    g.moveTo(0, -2); g.lineTo(3, 2); g.lineTo(0, 4); g.lineTo(-3, 2);
+    g.closePath(); g.fill();
+  }
+
+  // Golden wing: nothing can touch him.
+  function drawGoldWing(g) {
+    var k = 1 + Math.sin(st.t * 8) * 0.08;
+    g.save();
+    g.scale(k, k);
+    g.shadowColor = 'rgba(255,214,106,0.9)';
+    g.shadowBlur = 14;
+    SG.art.drawWing(g, 0, 0, 1.5, -0.3);
+    g.restore();
+    g.fillStyle = 'rgba(255,240,190,0.55)';
+    for (var i = 0; i < 3; i++) {
+      var a = st.t * 4 + i * 2.1;
+      g.beginPath();
+      g.arc(Math.cos(a) * 20, Math.sin(a) * 13, 2.2, 0, Math.PI * 2);
+      g.fill();
+    }
+  }
+
+  // The growing mushroom.
+  function drawGrowShroom(g) {
+    g.fillStyle = '#efe3c8';
+    SG.roundRect(g, -8, -4, 16, 17, 5);
+    g.fill();
+    g.strokeStyle = 'rgba(60,40,20,0.5)';
+    g.lineWidth = 1.8;
+    g.stroke();
+    g.fillStyle = '#e14a4a';
+    g.beginPath();
+    g.ellipse(0, -4, 17, 13, 0, Math.PI, 0);
+    g.fill();
+    g.stroke();
+    g.fillStyle = '#fff6ec';
+    [[-8, -9, 4], [1, -13, 5], [9, -8, 3.4]].forEach(function (d) {
+      g.beginPath();
+      g.ellipse(d[0], d[1], d[2], d[2] * 0.8, 0, 0, Math.PI * 2);
+      g.fill();
+    });
+    g.fillStyle = '#2a2030';
+    g.beginPath(); g.arc(-3.5, 3, 1.5, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(3.5, 3, 1.5, 0, Math.PI * 2); g.fill();
   }
 
   function drawGround(g, x, y, w, h, th, s) {
@@ -1527,49 +1949,57 @@
         g.save();
         g.globalAlpha = 1 - m.got / 0.45;
         g.translate(x, m.y - m.got * 90);
-        leaf(g, 1 + m.got);
+        waffle(g, 1 + m.got);
         g.restore();
         continue;
       }
       g.save();
       g.translate(x, m.y + Math.sin(st.t * 2.6 + m.phase) * 5);
-      leaf(g, 1);
+      waffle(g, 1);
       g.restore();
     }
   }
 
-  function leaf(g, s) {
+  /* A Belgian waffle, which for a Flemish recipient is the only correct
+     shape for money to take. */
+  function waffle(g, s) {
     g.scale(s, s);
-    g.fillStyle = '#3f8f43';
-    g.fillRect(-1.6, 2, 3.2, 12);
-    g.fillStyle = '#5fc35a';
-    g.strokeStyle = 'rgba(20,50,20,0.5)';
-    g.lineWidth = 1.6;
-    [-1, 1].forEach(function (d) {
-      g.beginPath();
-      g.moveTo(0, 4);
-      g.quadraticCurveTo(d * 22, -4, d * 6, -16);
-      g.quadraticCurveTo(d * 2, -8, 0, 4);
-      g.fill();
-      g.stroke();
-    });
-    g.beginPath();
-    g.moveTo(0, 2);
-    g.quadraticCurveTo(-9, -14, 0, -22);
-    g.quadraticCurveTo(9, -14, 0, 2);
+    g.fillStyle = '#c98a30';
+    SG.roundRect(g, -11, -10, 22, 21, 5);
     g.fill();
+    g.fillStyle = '#f0b453';
+    SG.roundRect(g, -11, -11, 22, 20, 5);
+    g.fill();
+    g.strokeStyle = 'rgba(120,72,20,0.55)';
+    g.lineWidth = 1.5;
     g.stroke();
-    g.fillStyle = '#e14a4a';
-    g.beginPath(); g.arc(-5, 6, 4.2, 0, Math.PI * 2); g.fill();
-    g.beginPath(); g.arc(4, 8, 3.4, 0, Math.PI * 2); g.fill();
-    g.fillStyle = 'rgba(255,255,255,0.6)';
-    g.beginPath(); g.arc(-6.4, 4.6, 1.4, 0, Math.PI * 2); g.fill();
+
+    // the grid
+    g.fillStyle = 'rgba(150,92,26,0.5)';
+    for (var r = 0; r < 2; r++) {
+      for (var c = 0; c < 2; c++) {
+        SG.roundRect(g, -7.5 + c * 8, -7.5 + r * 8, 6, 6, 1.4);
+        g.fill();
+      }
+    }
+    // butter
+    g.fillStyle = '#fff4c2';
+    SG.roundRect(g, -3.5, -9, 7, 4.5, 1.5);
+    g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.5)';
+    SG.roundRect(g, -9, -9.5, 5, 2, 1);
+    g.fill();
   }
 
+  /* Gargamel's colours fly over the end of every level until Santi
+     reaches the pole. Then they come down and the smurf flag goes up in
+     their place - the level actually changing hands, rather than a
+     banner that was always yours sliding about. */
   function drawFlag(g, cam) {
     var x = st.lv.flagX - cam;
-    if (x < -80 || x > SG.W + 120) return;
+    if (x < -90 || x > SG.W + 130) return;
     var top = BASE_Y - 210;
+
     g.fillStyle = '#cfd6e2';
     g.fillRect(x - 4, top, 8, 210);
     g.fillStyle = '#9aa4b6';
@@ -1579,22 +2009,69 @@
     g.arc(x, top - 2, 9, 0, Math.PI * 2);
     g.fill();
 
-    var drop = st.phase === 'clear' ? st.flagT * 120 : 0;
-    g.fillStyle = '#4aa8ff';
+    var t = st.phase === 'clear' ? st.flagT : 0;
+    var down = Math.min(1, t / 0.5);            // his banner falls first
+    var up = Math.max(0, (t - 0.45) / 0.55);    // then ours climbs
+
+    if (down < 1) {
+      g.save();
+      g.globalAlpha = 1 - down * 0.15;
+      flagCloth(g, x, top + 14 + down * 150, false);
+      g.restore();
+    }
+    if (up > 0) {
+      g.save();
+      // rises from the foot of the pole to the top
+      flagCloth(g, x, top + 150 - (up * 136), true);
+      g.restore();
+    }
+  }
+
+  function flagCloth(g, x, y, smurf) {
+    var wave = Math.sin(st.t * 3) * 4;
+    g.fillStyle = smurf ? '#4aa8ff' : '#2b2340';
     g.beginPath();
-    g.moveTo(x + 3, top + 14 + drop);
-    g.lineTo(x + 84, top + 40 + drop);
-    g.lineTo(x + 3, top + 66 + drop);
+    g.moveTo(x + 3, y);
+    g.quadraticCurveTo(x + 46, y + 8 + wave, x + 86, y + 26);
+    g.quadraticCurveTo(x + 46, y + 44 - wave, x + 3, y + 52);
     g.closePath();
     g.fill();
-    g.fillStyle = '#fff';
-    g.beginPath();
-    g.arc(x + 30, top + 40 + drop, 11, 0, Math.PI * 2);
-    g.fill();
-    g.fillStyle = '#4aa8ff';
-    g.beginPath();
-    g.arc(x + 30, top + 43 + drop, 5, 0, Math.PI * 2);
-    g.fill();
+    g.strokeStyle = smurf ? 'rgba(20,60,110,0.5)' : 'rgba(140,130,180,0.35)';
+    g.lineWidth = 2;
+    g.stroke();
+
+    if (smurf) {
+      // a white cap on blue
+      g.fillStyle = '#ffffff';
+      g.beginPath();
+      g.moveTo(x + 18, y + 34);
+      g.quadraticCurveTo(x + 17, y + 18, x + 32, y + 14);
+      g.quadraticCurveTo(x + 46, y + 11, x + 45, y + 24);
+      g.quadraticCurveTo(x + 40, y + 27, x + 46, y + 34);
+      g.closePath();
+      g.fill();
+      g.fillStyle = '#eef3ff';
+      SG.roundRect(g, x + 16, y + 32, 32, 6, 3);
+      g.fill();
+    } else {
+      // his hooked profile, in grey
+      g.fillStyle = '#8b8794';
+      g.beginPath();
+      g.arc(x + 32, y + 24, 11, 0, Math.PI * 2);
+      g.fill();
+      g.beginPath();
+      g.moveTo(x + 40, y + 20);
+      g.quadraticCurveTo(x + 58, y + 27, x + 42, y + 32);
+      g.closePath();
+      g.fill();
+      g.fillStyle = '#2b2340';
+      g.beginPath(); g.arc(x + 31, y + 21, 2.2, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = '#8b8794';
+      g.lineWidth = 2.4;
+      g.beginPath();
+      g.moveTo(x + 24, y + 15); g.lineTo(x + 34, y + 18);
+      g.stroke();
+    }
   }
 
   function drawPuddles(g, cam) {
@@ -2047,21 +2524,50 @@
     if (p.iFrames > 0 && Math.floor(p.iFrames * 22) % 2) return;
     var x = p.x - cam;
 
-    shadow(g, x, Math.min(BASE_Y, p.y), 20);
+    // Scale follows the hitbox, with an overshoot on the way up so the
+    // change of size is a a thing that HAPPENS rather than a thing you
+    // notice later.
+    var pop = p.popT > 0 ? Math.sin((1 - p.popT / 0.45) * Math.PI) * 0.18 : 0;
+    var scale = 1 + BIG_H * p.grow + pop;
+    var h = PH * scale;
+
+    if (p.sauceT > 0) speedTrail(g, x, p.y, h);
+    shadow(g, x, Math.min(BASE_Y, p.y), 20 * scale);
 
     g.save();
     if (p.facing < 0) { g.translate(x * 2, 0); g.scale(-1, 1); }
+
+    if (p.goldT > 0) {
+      // untouchable: flashing, and lit from inside
+      var hue = Math.floor(st.t * 14) % 3;
+      g.shadowColor = ['#ffd66a', '#fff', '#ffb02e'][hue];
+      g.shadowBlur = 22;
+    }
+    var flash = bigFlashing();
+    if (flash) { g.globalAlpha = 0.72; }
+
     var moving = p.grounded && Math.abs(p.vx) > 20;
-    SG.art.drawSanti(g, x, p.y, PH, p.phase, {
+    SG.art.drawSanti(g, x, p.y, h, p.phase, {
       face: 'santi',
-      shirt: '#3f8fe0',
+      shirt: p.goldT > 0 ? '#ffcf4a' : '#3f8fe0',
       boxColor: '#ffffff', boxInk: '#2f6fb8', boxText: 'SMURF',
       pants: '#eaeef6', shoe: '#ffffff',
       run: moving ? 1 : (p.grounded ? 0.08 : 0.5),
       bob: moving,
     });
     // The cap goes on last, over whatever the head art is.
-    smurfCap(g, x, p.y - PH * 0.815, PH * 0.185);
+    smurfCap(g, x, p.y - h * 0.815, h * 0.185);
+    g.restore();
+  }
+
+  function speedTrail(g, x, yFeet, h) {
+    g.save();
+    for (var i = 1; i <= 3; i++) {
+      g.globalAlpha = 0.3 / i;
+      g.fillStyle = SG.COLORS.sauce;
+      SG.roundRect(g, x - st.p.facing * i * 16 - 13, yFeet - h * 0.78, 26, h * 0.72, 11);
+      g.fill();
+    }
     g.restore();
   }
 
@@ -2109,9 +2615,9 @@
     g.save();
     g.translate(30, 78);
     g.scale(0.85, 0.85);
-    leaf(g, 1);
+    waffle(g, 1);
     g.restore();
-    SG.ui.text(g, String(st.gems), 48, 74, {
+    SG.ui.text(g, String(st.waffles), 48, 74, {
       size: 20, color: '#bff0a8', align: 'left', stroke: '#16301a', strokeWidth: 5, shadow: false,
     });
 
@@ -2131,6 +2637,24 @@
     SG.art.drawWing(g, SG.W - 100, 72, 0.95, -0.3);
     SG.ui.text(g, String(st.wings), SG.W - 84, 72, {
       size: 18, color: SG.COLORS.gold, align: 'left', stroke: '#1a1030', strokeWidth: 5, shadow: false,
+    });
+
+    var bar = 0;
+    if (st.p.bigT > 0) powerBar(g, bar++, st.p.bigT / BIG_TIME, '#7ee08a', 'BIG');
+    if (st.p.goldT > 0) powerBar(g, bar++, st.p.goldT / GOLD_TIME, SG.COLORS.gold, 'UNTOUCHABLE');
+    if (st.p.sauceT > 0) powerBar(g, bar++, st.p.sauceT / SAUCE_TIME, SG.COLORS.sauce, 'SPEED');
+  }
+
+  function powerBar(g, i, frac, color, label) {
+    var w = 132, x = SG.W / 2 - w / 2, y = 46 + i * 22;
+    g.fillStyle = 'rgba(10,12,28,0.55)';
+    SG.roundRect(g, x - 3, y - 3, w + 6, 16, 8);
+    g.fill();
+    g.fillStyle = color;
+    SG.roundRect(g, x, y, w * SG.clamp(frac, 0, 1), 10, 5);
+    g.fill();
+    SG.ui.text(g, label, x + w / 2, y + 5, {
+      size: 10, color: '#0e1430', shadow: false,
     });
   }
 
@@ -2215,8 +2739,42 @@
     SG.ui.panel(g, CX - 170, 130, 340, 280);
     SG.ui.text(g, 'PAUSED', CX, 180, { size: 34, color: '#fff', shadow: false });
     if (SG.ui.button(g, { x: CX - 120, y: 222, w: 240, h: 48 }, 'RESUME', { color: SG.COLORS.gold })) st.paused = false;
-    if (SG.ui.button(g, { x: CX - 120, y: 280, w: 240, h: 44 }, 'RESTART LEVEL', { color: '#3a4270', text: '#fff', size: 16 })) reset(st.levelIdx, st.score);
-    if (SG.ui.button(g, { x: CX - 120, y: 334, w: 240, h: 44 }, 'MENU', { color: '#2a2f52', text: '#fff' })) SG.go('menu');
+    // Both of these leave the level, so bank the waffles first.
+    if (SG.ui.button(g, { x: CX - 120, y: 280, w: 240, h: 44 }, 'RESTART LEVEL', { color: '#3a4270', text: '#fff', size: 16 })) {
+      cashIn();
+      reset(st.levelIdx, { score: st.score, waffleTotal: st.waffleTotal, wings: st.wings });
+    }
+    if (SG.ui.button(g, { x: CX - 120, y: 334, w: 240, h: 44 }, 'MENU', { color: '#2a2f52', text: '#fff' })) { cashIn(); SG.go('menu'); }
+  }
+
+  /* The waffles-to-wings exchange, shown wherever a level ends. Counts
+     up rather than just stating the total, because watching it tick is
+     the reward for having gone and got them. */
+  function exchange(g, cx, y) {
+    var k = SG.clamp((st.endT - 0.5) * 1.6, 0, 1);
+    var shown = Math.round(st.cashed * k);
+    var wings = shown * WAFFLE_WINGS;
+
+    g.save();
+    g.translate(cx - 118, y);
+    waffle(g, 1.15);
+    g.restore();
+    SG.ui.text(g, String(shown), cx - 96, y - 3, {
+      size: 22, color: '#f0b453', align: 'left', shadow: false,
+    });
+
+    SG.ui.text(g, '→', cx - 6, y - 3, {
+      size: 20, color: 'rgba(255,255,255,0.45)', shadow: false,
+    });
+
+    SG.art.drawWing(g, cx + 34, y, 1.2, -0.3);
+    SG.ui.text(g, '+' + wings, cx + 56, y - 3, {
+      size: 22, color: SG.COLORS.gold, align: 'left', shadow: false,
+    });
+
+    SG.ui.text(g, 'waffles traded for chicken wings', cx, y + 30, {
+      size: 12, color: 'rgba(255,255,255,0.4)', shadow: false,
+    });
   }
 
   function drawClear(g) {
@@ -2230,22 +2788,12 @@
     });
     SG.ui.text(g, 'CLEARED', CX, 178, { size: 34, color: '#fff', shadow: false });
 
-    g.save();
-    g.translate(CX - 66, 232);
-    leaf(g, 1.1);
-    g.restore();
-    SG.ui.text(g, st.gems + ' sarsaparilla', CX - 44, 228, {
-      size: 17, color: '#bff0a8', align: 'left', shadow: false,
-    });
-    SG.art.drawWing(g, CX - 66, 268, 1.15, -0.3);
-    SG.ui.text(g, '+' + st.wings + ' wings', CX - 44, 268, {
-      size: 17, color: SG.COLORS.gold, align: 'left', shadow: false,
-    });
-    SG.ui.text(g, 'SCORE  ' + st.score, CX, 308, { size: 15, color: 'rgba(255,255,255,0.55)', shadow: false });
+    exchange(g, CX, 236);
+    SG.ui.text(g, 'SCORE  ' + st.score, CX, 306, { size: 15, color: 'rgba(255,255,255,0.55)', shadow: false });
 
     var next = LEVELS[st.levelIdx + 1];
     if (SG.ui.button(g, { x: CX - 190, y: 336, w: 180, h: 54 }, next.boss ? 'THE LAIR' : 'NEXT', { color: SG.COLORS.gold, size: 17 })) {
-      reset(st.levelIdx + 1, st.score);
+      reset(st.levelIdx + 1, { score: st.score, waffleTotal: st.waffleTotal, wings: st.wings });
     }
     if (SG.ui.button(g, { x: CX + 10, y: 336, w: 180, h: 54 }, 'MENU', { color: '#3a4270', text: '#fff' })) SG.go('menu');
   }
@@ -2260,10 +2808,9 @@
     SG.ui.text(g, st.boss ? 'Gargamel wins this one.' : 'The village claims another.', CX, 202, {
       size: 15, color: 'rgba(255,255,255,0.6)', shadow: false,
     });
-    SG.ui.text(g, String(st.score), CX, 250, { size: 34, color: '#fff', shadow: false });
-    SG.ui.text(g, 'BEST  ' + SG.save.best('smurf'), CX, 282, { size: 13, color: 'rgba(255,255,255,0.4)', shadow: false });
-    SG.art.drawWing(g, CX - 58, 310, 1.1, -0.3);
-    SG.ui.text(g, '+' + st.wings + ' wings', CX - 38, 310, { size: 16, color: SG.COLORS.gold, align: 'left', shadow: false });
+    SG.ui.text(g, String(st.score), CX, 244, { size: 32, color: '#fff', shadow: false });
+    SG.ui.text(g, 'BEST  ' + SG.save.best('smurf'), CX, 272, { size: 13, color: 'rgba(255,255,255,0.4)', shadow: false });
+    exchange(g, CX, 306);
 
     if (SG.ui.button(g, { x: CX - 190, y: 336, w: 180, h: 54 }, 'AGAIN', { color: SG.COLORS.gold })) reset(st.levelIdx, 0);
     if (SG.ui.button(g, { x: CX + 10, y: 336, w: 180, h: 54 }, 'MENU', { color: '#3a4270', text: '#fff' })) SG.go('menu');
@@ -2281,10 +2828,12 @@
     SG.ui.text(g, 'The village is smurfed. Or unsmurfed. One of the two.', CX, 184, {
       size: 13, color: 'rgba(255,255,255,0.55)', shadow: false,
     });
-    SG.ui.text(g, String(st.score), CX, 236, { size: 40, color: '#fff', shadow: false });
-    SG.ui.text(g, 'BEST  ' + SG.save.best('smurf'), CX, 272, { size: 13, color: 'rgba(255,255,255,0.4)', shadow: false });
-    SG.art.drawWing(g, CX - 62, 306, 1.2, -0.3);
-    SG.ui.text(g, '+' + st.wings + ' wings', CX - 40, 306, { size: 18, color: SG.COLORS.gold, align: 'left', shadow: false });
+    SG.ui.text(g, String(st.score), CX, 230, { size: 38, color: '#fff', shadow: false });
+    SG.ui.text(g, 'BEST  ' + SG.save.best('smurf'), CX, 262, { size: 13, color: 'rgba(255,255,255,0.4)', shadow: false });
+    exchange(g, CX, 296);
+    SG.ui.text(g, st.waffleTotal + ' waffles this run  ·  ' + st.wings + ' wings banked', CX, 326, {
+      size: 12, color: 'rgba(255,255,255,0.45)', shadow: false,
+    });
 
     if (SG.ui.button(g, { x: CX - 190, y: 342, w: 180, h: 54 }, 'PLAY AGAIN', { color: SG.COLORS.gold, size: 16 })) reset(0, 0);
     if (SG.ui.button(g, { x: CX + 10, y: 342, w: 180, h: 54 }, 'MENU', { color: '#3a4270', text: '#fff' })) SG.go('menu');
