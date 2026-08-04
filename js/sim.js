@@ -64,7 +64,8 @@
                  'Cleaned with a toothbrush. His toothbrush.'] },
 
       { id: 'guitar',    x: 500,  w: 70,  kind: 'guitar',    label: 'GUITAR',
-        flavor: ['Three chords. Two of them good.', 'It has been in tune once.'] },
+        flavor: ['Three chords. Two of them good.', 'It has been in tune once.',
+                 'He only ever plays Azizam on it.', 'Daley has heard Azizam enough now.'] },
 
       // --- living room ---
       { id: 'couch',     x: 2130, w: 280, kind: 'couch',     label: 'COUCH',
@@ -181,7 +182,7 @@
     { id: 'k3',     title: 'K3',                hint: 'Put K3 on. Loud.',          target: 'stereo' },
     { id: 'game',   title: 'ONE QUICK GAME',    hint: 'It is never one game',      target: 'console' },
     { id: 'plant',  title: 'THE PLANT',         hint: 'Water it before it dies',   target: 'plant' },
-    { id: 'guitar', title: 'THREE CHORDS',      hint: 'He knows three chords',     target: 'guitar' },
+    { id: 'guitar', title: 'AZIZAM',            hint: 'The one song he knows',     target: 'guitar' },
     { id: 'sleep',  title: 'GO TO SLEEP',       hint: 'Back to bed',               target: 'bed' },
   ];
 
@@ -291,7 +292,7 @@
     { label: "SANTI CAN'T", sub: '1.2M', bg: '#2a2352', ink: '#ffd400' },
     { label: 'K3',          sub: 'TOUR', bg: '#7a2a6a', ink: '#ffd6f2' },
     { label: 'WINGS',       sub: 'HOT',  bg: '#5a2018', ink: '#ff9a4a' },
-    { label: 'BRUSSELS',    sub: '1958', bg: '#1d3b5c', ink: '#9ad4ff' },
+    { label: 'ANTWERP',     sub: "'T STAD", bg: '#1d3b5c', ink: '#9ad4ff' },
     { label: 'RUE',         sub: 'GOOD DOG', bg: '#3a2e22', ink: '#f0d8a8' },
   ];
 
@@ -714,7 +715,15 @@
         if (SG.input.takeTap()) {
           o.strums++;
           SG.audio.play(['point', 'wing', 'pop'][o.strums % 3]);
-          if (o.strums >= 3) { say(SG.pick(['Three chords. Still three chords.', 'Wonderwall. It is always Wonderwall.'])); closeOverlay(true); }
+          if (o.strums >= 3) {
+            say(SG.pick([
+              'Azizam. Again.',
+              'It is always Azizam.',
+              'He does the Ed Sheeran loop bit and everything.',
+              'Word perfect. Chords approximate.',
+            ]));
+            closeOverlay(true);
+          }
         }
         break;
 
@@ -1559,22 +1568,26 @@
 
       case 'guitar': {
         SG.ui.panel(g, CX - 210, 130, 420, 250);
-        SG.ui.text(g, 'THREE CHORDS', CX, 178, { size: 22, color: '#b5762e', shadow: false });
+        SG.ui.text(g, 'AZIZAM', CX, 172, { size: 24, color: '#b5762e', shadow: false });
+        SG.ui.text(g, 'ED SHEERAN', CX, 194, { size: 12, color: 'rgba(255,255,255,0.45)', shadow: false });
+        // Sized to clear the title above and the prompt below.
         var strum = Math.sin(st.t * 14) * (o.strums ? 5 : 1);
         g.save();
-        g.translate(CX, 262);
-        g.rotate(0.12 + strum * 0.01);
+        g.translate(CX, 308);
+        g.rotate(0.1 + strum * 0.01);
+        g.strokeStyle = '#4a3218'; g.lineWidth = 9;
+        g.beginPath(); g.moveTo(2, -30); g.lineTo(10, -84); g.stroke();
+        g.fillStyle = '#3a2612';
+        SG.roundRect(g, 5, -94, 12, 14, 3); g.fill();
         g.fillStyle = '#b5762e';
-        g.beginPath(); g.ellipse(0, 0, 44, 54, 0, 0, Math.PI * 2); g.fill();
+        g.beginPath(); g.ellipse(0, 0, 30, 36, 0, 0, Math.PI * 2); g.fill();
         g.strokeStyle = 'rgba(40,22,8,0.6)'; g.lineWidth = 3; g.stroke();
         g.fillStyle = '#2a1a0c';
-        g.beginPath(); g.arc(0, -4, 15, 0, Math.PI * 2); g.fill();
-        g.strokeStyle = '#4a3218'; g.lineWidth = 11;
-        g.beginPath(); g.moveTo(4, -46); g.lineTo(16, -146); g.stroke();
-        g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineWidth = 1.4;
+        g.beginPath(); g.arc(0, -3, 11, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineWidth = 1.3;
         for (var st2 = 0; st2 < 4; st2++) {
           g.beginPath();
-          g.moveTo(-9 + st2 * 6 + strum, 44); g.lineTo(6 + st2 * 5 + strum, -142);
+          g.moveTo(-7 + st2 * 4.5 + strum, 28); g.lineTo(4 + st2 * 3.5 + strum, -84);
           g.stroke();
         }
         g.restore();
