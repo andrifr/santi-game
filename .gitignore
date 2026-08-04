@@ -3,3 +3,8 @@ node_modules/
 *.log
 .DS_Store
 Thumbs.db
+
+# Third-party music kept out of a public repo. Anything in here is
+# someone else's recording; the game's own tunes are written in code
+# (SG.audio.melody) and voice clips are recorded by the family.
+assets/k3songs/
