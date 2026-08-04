@@ -149,6 +149,44 @@ Santi complaining about her. The speaker is flavour-only, not a job.
 
 ---
 
+## Next up — Brawl joysticks, requested and not yet built
+
+Make the two sticks work and look like Brawl Stars'. All of it lives in
+`drawSticks()` (`js/brawl.js`, ~line 941) and `readControls()`.
+
+**Wanted:**
+
+- **Always visible**, not only while a finger is down. They currently
+  render only when `st.moveStick` / `st.aim` exist, which is to say only
+  mid-press, so a new player sees no controls at all.
+- **The stick jumps to the finger.** Press anywhere in that half and the
+  stick re-homes there rather than making you find it. When nothing is
+  pressed it sits back at its resting spot.
+- **Left stick blue** (movement), **right stick red with a target in the
+  middle** (shooting).
+- **Translucent when idle, opaque the moment it is being used.**
+
+**What is already true**, so don't redo it: the origin is taken from
+`p.sx, p.sy` — where the finger landed — so the "jumps to your finger"
+half is effectively there already for a press. What is missing is the
+resting state when *no* finger is down, the re-home animation, the
+colours and the two opacity levels.
+
+**Traps waiting for whoever picks this up:**
+
+- The super button is bottom-right at `superRect()` — 148×148 in the
+  corner. The aim stick's resting home must not sit underneath it or the
+  two overlap. The pause button is top-right.
+- A pointer starting inside `superRect()` is deliberately excluded from
+  aiming. Keep that when you move things around.
+- Gate the whole thing on `SG.platform.touch` — desktop aims with the
+  mouse and moves with WASD, and drawing thumb sticks there is noise.
+  Smurf World's pad uses exactly this pattern.
+- The aim stick is drawn only when `!a.mouse`, which is correct: a mouse
+  is an aim but never a thumb stick.
+
+---
+
 ## Open threads
 
 1. **The family K3 recording** (above). Highest-value idea outstanding.
