@@ -14,15 +14,25 @@ Live at **<https://andrifr.github.io/santi-game/>**
 
 ## Art direction
 
-Grungy, sprayed streetwear — box logos, graffiti tags, spray-can
-colours — carried across every mode. Wing Run runs through Brussels at
-dusk with the Atomium on the horizon and Grand-Place stepped gables in
-the skyline; Rue and Daley appear in lit windows as easter eggs.
+Clean, colourful, readable — box logos and streetwear colour, no
+grunge. An earlier sprayed/graffiti treatment was built across two modes
+and then removed at the recipient's request; buildings and walls are
+plain. Signage like the *Santi Can't* billboards is fine, tags are not.
 
-One rule holds everywhere: **nothing decorative goes on the playing
-surface.** Text and colour on the road or the court read as instructions
-and pull your eye off the thing you're supposed to be tracking. Graffiti
-lives on walls and billboards.
+Every environment is drawn in canvas code — rooms, streets, arenas,
+mushroom villages, the Atomium. There are no tilesets. Only characters
+come from image files. Wing Run runs through Brussels at dusk with the
+Atomium on the horizon and Grand-Place stepped gables in the skyline;
+Rue and Daley appear in lit windows as easter eggs.
+
+Two rules hold everywhere:
+
+**Nothing decorative goes on the playing surface.** Text and colour on
+the road or the court read as instructions and pull your eye off the
+thing you're supposed to be tracking.
+
+**Gameplay legibility beats atmosphere.** The Pickleball backdrop was
+dimmed because it competed with the ball.
 
 ## Run it locally
 
@@ -168,7 +178,7 @@ Gargamel. Four levels: the village, the wood, the gate, and the lair.
 | Jump | anywhere on the right half | ↑ / W / Space |
 | Jump higher | hold it | hold it |
 
-**Hold to jump higher.** A tap clears 66px, a full hold 132px — a tap
+**Hold to jump higher.** A tap clears 66px, a full hold 127px — a tap
 gets you over a gnap, a hold gets you onto a ledge. Nothing in the game
 *requires* the hold, including Gargamel.
 
@@ -300,6 +310,12 @@ Both degrade gracefully: if a file is missing or won't decode, the
 synthesized cue plays instead and the game retries next time. iOS can't
 create an audio context until the first touch, so clips are fetched
 immediately and decoded on that first tap.
+
+**No third-party audio ships here.** The repo is public and Pages serves
+it, so anything committed is published rather than kept private — the
+only recorded clips are the family's own. `assets/k3songs/` is
+gitignored so a commercial track dropped in there can't be swept in by a
+`git add -A`.
 
 ## Characters
 

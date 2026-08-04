@@ -165,13 +165,18 @@ route out of a mode, it has to call `cashIn()` too.
 ### Audio
 
 All effects are synthesized (`SG.audio.play(name)`), so there is no load
-cost. **No third-party audio ships here** — the repo is public and Pages
-serves it, so anything committed is published, not private. The only
-recorded clips are the family's own (`assets/k3songs/` is gitignored for
-this reason). Two recorded clips are the exception, loaded via
+cost. Two recorded clips are the exception, loaded via
 `SG.audio.loadSample()` and falling back to the synth cue if a file is
 missing or won't decode. iOS cannot create an AudioContext before the
 first touch, so samples are fetched immediately and decoded on that tap.
+
+**No third-party audio ships here.** The repo is public and Pages serves
+it, so anything committed is published rather than private — the only
+recorded clips are the family's own. A commercial K3 track was offered
+and declined for this reason; `assets/k3songs/` is gitignored so it
+can't be swept in by a `git add -A`. Transcribing a copyrighted tune
+into note data is the same problem in a different file format, so that
+is out too. Original tunes or the family's own recordings are fine.
 
 ### Depth-squashed modes (pickleball, brawl)
 
@@ -231,9 +236,19 @@ st; }` to the scene's registration, drive `update`+`draw` at a fixed
 and assert on the resulting state. **Remove the hook before committing**
 — `grep -rn __debug js/` should come back empty.
 
-Two ways this has produced false results: a synthetic pointer that was
-never released (the game correctly believes aim is held forever), and
-state carried over from a previous run (`enter()` between cases).
+Four ways this has produced false results, all of which looked like game
+bugs and were not:
+
+- A synthetic pointer that was never released — the game correctly
+  believes aim is held forever.
+- State carried over from a previous case. Call `enter()` between them.
+- **Keys left set between phases.** A helper that only writes the keys
+  you pass leaves the others as they were, so a leftover `KeyA` silently
+  cancels the `KeyD` you just set and the player never moves. Clear all
+  keys between cases.
+- **Teleporting the player without moving the camera.** Screen
+  coordinates are computed from `st.cam`, which lerps; set `cam` too, or
+  the tap you synthesize lands off-screen and is correctly discarded.
 
 ## iOS
 
