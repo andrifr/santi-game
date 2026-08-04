@@ -13,10 +13,17 @@
 
   // Arena is world space; y is depth and gets squashed on screen, which
   // is what gives the three-quarter look. Aiming converts between them.
-  var ARENA_W = 1500, ARENA_H = 1020;
+  var ARENA_W = 2000, ARENA_H = 1300;
   var SQUASH = 0.62;
   var BODY_H = 108;
-  var HIT_R = 40;
+  var HIT_R = 40;                 // a normal Daley; scaled per bot by b.scale
+
+  // Bush rules, lifted from Brawl Stars: cover hides you until you take
+  // a shot, or until she is close enough to trip over you.
+  var BUSH_REVEAL = 1.0;
+  var BUSH_SEE_R = 175;
+
+  var BOSS_EVERY = 5;             // rounds 5, 10, 15 ... get one
 
   var STICK_R = 62, DEAD = 14;
   var sawMouse = false;           // set by readControls; see the thumb sticks
@@ -86,6 +93,64 @@
     { id: 'attack',  name: 'ATTACK',  desc: '+26% damage',     color: '#e8202a' },
   ];
 
+  /* ---------------------------------------------------------------
+     Daleys come in three sizes. The runt is the interesting one: she
+     is quick and cheap to kill, so a crowd of them reads as pressure
+     rather than as a wall of health. Everything that touches a bot's
+     size goes through `scale` - hitbox, sprite, shadow, health bar and
+     the padding she keeps off cover - or a big one ends up with a
+     hitbox that doesn't match her drawing, which is the bug that took
+     three tries to find in Smurf World.
+     --------------------------------------------------------------- */
+  var BOT_KINDS = {
+    runt: { scale: 0.66, hp: 0.40, speed: 1.34, dmg: 0.55, rate: 0.80, shirts: ['#e0498f', '#d8555f'] },
+    normal: { scale: 1.00, hp: 1.00, speed: 1.00, dmg: 1.00, rate: 1.00, shirts: ['#1e63c8', '#c8306a', '#2f8f7d'] },
+    // She fires three at once, so per-heart damage stays modest - all
+    // three landing at contact range is meant to hurt, not to be fatal.
+    boss: { scale: 1.95, hp: 3.60, speed: 0.54, dmg: 1.35, rate: 1.55, shirts: ['#7d0f33'] },
+  };
+
+  /* Cover. Mixed shapes because they do different jobs: a long wall
+     breaks a sight line, a barrel is something to circle, a boulder is
+     a hard corner. Bushes are separate - they block nothing, they only
+     hide. Kept as one hand-placed layout rather than something random,
+     so no round can deal you a spawn with nothing to stand behind. */
+  function buildCover() {
+    var C = [];
+    var box = function (x, y, w, h) { C.push({ kind: 'box', x: x, y: y, w: w, h: h }); };
+    var wall = function (x, y, w, h) { C.push({ kind: 'wall', x: x, y: y, w: w, h: h }); };
+    var barrel = function (x, y) { C.push({ kind: 'barrel', x: x, y: y, r: 40 }); };
+    var rock = function (x, y, r) { C.push({ kind: 'rock', x: x, y: y, r: r }); };
+
+    box(330, 250, 108, 92);   box(1670, 250, 108, 92);
+    box(330, 1050, 108, 92);  box(1670, 1050, 108, 92);
+    box(1000, 235, 116, 96);  box(1000, 1075, 116, 96);
+
+    wall(640, 650, 300, 54);  wall(1360, 650, 300, 54);
+    wall(215, 640, 54, 250);  wall(1785, 640, 54, 250);
+
+    barrel(720, 380);  barrel(1280, 380);
+    barrel(720, 920);  barrel(1280, 920);
+
+    rock(470, 470, 60);   rock(1530, 470, 60);
+    rock(470, 830, 52);   rock(1530, 830, 52);
+    return C;
+  }
+
+  // Placed on the flanking routes and one deep in each back corner, so
+  // sneaking round the outside is a real option rather than decoration.
+  function buildBushes() {
+    // Nothing on the arena centre: that is where the player spawns, and
+    // starting every round already hidden gives the mechanic away and
+    // reads as a bug.
+    var pts = [
+      [880, 470], [1120, 470], [880, 830], [1120, 830],
+      [1000, 810], [180, 300], [1820, 300], [180, 1000], [1820, 1000],
+      [640, 1180], [1360, 120],
+    ];
+    return pts.map(function (p) { return { x: p[0], y: p[1], r: 78 }; });
+  }
+
   // ---------------------------------------------------------------
   function reset(fullRestart) {
     var keep = (!fullRestart && st) ? st : null;
@@ -94,7 +159,9 @@
       round: keep ? keep.round : 1,
       powers: keep ? keep.powers : { speed: 0, defence: 0, attack: 0 },
       kit: keep ? keep.kit : KITS[0],
-      me: null, bots: [], shots: [], beams: [], crates: [],
+      me: null, bots: [], shots: [], beams: [], cover: [], bushes: [],
+      boss: null, bossQueued: false, bossWarn: 0, botsTotal: 0,
+      hidden: false, bushTaught: keep ? keep.bushTaught : false,
       cam: { x: ARENA_W / 2, y: ARENA_H / 2 },
       t: 0, msg: null, msgT: 0,
       moveStick: null, aim: null,
@@ -123,38 +190,75 @@
     st.bots = [];
     st.shots = [];
     st.beams = [];
-    st.crates = [];
+    st.cover = buildCover();
+    st.bushes = buildBushes();
+    st.boss = null;
+    st.bossWarn = 0;
+    st.bossQueued = st.round % BOSS_EVERY === 0;
 
-    var spots = [[300, 300], [1200, 300], [300, 720], [1200, 720], [750, 200], [750, 830]];
-    for (var c = 0; c < spots.length; c++) {
-      st.crates.push({ x: spots[c][0], y: spots[c][1], w: 108, h: 92 });
-    }
-
+    // Roughly two in five are runts, on a fixed pattern rather than at
+    // random so a round can't roll all-runt and feel like a pushover.
     var count = 4 + st.round;
     for (var i = 0; i < count; i++) {
       var a = (i / count) * Math.PI * 2 + 0.4;
-      st.bots.push(makeBot(ARENA_W / 2 + Math.cos(a) * 560, ARENA_H / 2 + Math.sin(a) * 400, i));
+      st.bots.push(makeBot(
+        ARENA_W / 2 + Math.cos(a) * 760, ARENA_H / 2 + Math.sin(a) * 500,
+        i, (i % 5 === 1 || i % 5 === 3) ? 'runt' : 'normal'));
     }
+    st.botsTotal = count;
     st.phase = 'fight';
-    say('ROUND ' + st.round);
+    say(st.bossQueued ? 'ROUND ' + st.round + ' · BOSS ROUND' : 'ROUND ' + st.round);
     SG.audio.play('power');
   }
 
-  function makeBot(x, y, i) {
+  function makeBot(x, y, i, kind) {
+    var K = BOT_KINDS[kind] || BOT_KINDS.normal;
     var tough = 1 + (st.round - 1) * 0.28;
-    var spot = freeSpot(x, y);
+    var hp = 130 * K.hp * tough;
+    var spot = freeSpot(x, y, HIT_R * K.scale);
     return {
+      kind: kind, scale: K.scale, r: HIT_R * K.scale,
       x: spot.x, y: spot.y,
-      hp: 130 * tough, maxHp: 130 * tough,
-      speed: 96 + st.round * 7 + (i % 3) * 9,
+      hp: hp, maxHp: hp,
+      speed: (96 + st.round * 7 + (i % 3) * 9) * K.speed,
       cool: SG.rand(0.6, 2.0),
-      rate: Math.max(0.72, 1.7 - st.round * 0.1),
+      rate: Math.max(0.72, 1.7 - st.round * 0.1) * K.rate,
+      dmg: (9 + st.round) * K.dmg,
       phase: Math.random() * 6.28,
       strafe: Math.random() < 0.5 ? 1 : -1,
       stuckT: 0, detour: 0,
       hurt: 0, dead: 0,
-      shirt: ['#1e63c8', '#c8306a', '#2f8f7d'][i % 3],
+      // Seeded to the player, never to her own feet: a bot whose last
+      // known position is where she already stands has nowhere to walk,
+      // and a player who hides at the start freezes the whole round.
+      seenX: st.me ? st.me.x : ARENA_W / 2,
+      seenY: st.me ? st.me.y : ARENA_H / 2,
+      ringT: 5,
+      shirt: K.shirts[i % K.shirts.length],
     };
+  }
+
+  /* She turns up at the far end of the arena, so there is a moment to
+     reposition rather than having her land on top of you. */
+  function spawnBoss() {
+    var me = st.me;
+    var b = makeBot(
+      me.x < ARENA_W / 2 ? ARENA_W - 240 : 240,
+      me.y < ARENA_H / 2 ? ARENA_H - 240 : 240,
+      0, 'boss');
+    st.bots.push(b);
+    st.boss = b;
+    say('DALEY PRIME', '#ff2d6f');
+    SG.audio.play('wingbig');
+    SG.shake(16);
+  }
+
+  // Wings are banked the moment they are earned, never at the end of a
+  // run - putting the phone down must never cost anything.
+  function bankWings(n) {
+    st.wings += n;
+    SG.save.data.wings = (SG.save.data.wings || 0) + n;
+    SG.save.write();
   }
 
   function say(text, color) { st.msg = { text: text, color: color || SG.COLORS.gold }; st.msgT = 0; }
@@ -203,6 +307,16 @@
     if (me.dash) updateDash(dt);       // dashing overrides steering
     readControls(dt);
     updateSticks(dt);
+
+    // Worked out once a frame: every bot asks about it, and it decides
+    // how the player is drawn too.
+    st.hidden = !!inBush(me.x, me.y) && me.shotT > BUSH_REVEAL && !me.dash;
+    if (st.hidden && !st.bushTaught) {
+      st.bushTaught = true;
+      say('HIDDEN · SHOOTING GIVES YOU AWAY', '#5fd67f');
+    }
+
+    updateBoss(dt);
     updateBots(dt);
     updateShots(dt);
     for (var bi = st.beams.length - 1; bi >= 0; bi--) {
@@ -216,12 +330,11 @@
     st.cam.x += (tx - st.cam.x) * Math.min(1, dt * 7);
     st.cam.y += (ty - st.cam.y) * Math.min(1, dt * 7);
 
-    if (st.bots.filter(function (b) { return b.hp > 0; }).length === 0) {
-      var earned = 60 + st.round * 40;
-      st.wings += earned;
-      SG.save.data.wings = (SG.save.data.wings || 0) + earned;
+    // A boss round is not clear until she has been and gone, even if
+    // the player wipes out every Daley during the warning.
+    if (aliveBots() === 0 && !st.bossQueued && st.bossWarn <= 0) {
+      bankWings(60 + st.round * 40);
       SG.save.submit('brawl', st.round);
-      SG.save.write();
       st.phase = 'won';
       SG.audio.play('wingbig');
     }
@@ -319,6 +432,28 @@
           break;
         }
       }
+    }
+  }
+
+  function aliveBots() {
+    var n = 0;
+    for (var i = 0; i < st.bots.length; i++) if (st.bots[i].hp > 0) n++;
+    return n;
+  }
+
+  /* The boss arrives once half the round is down, not at the start:
+     the warning has to interrupt something for it to land, and it
+     gives the player a reason to keep some health in reserve. */
+  function updateBoss(dt) {
+    if (st.bossQueued && (st.botsTotal - aliveBots()) >= Math.ceil(st.botsTotal / 2)) {
+      st.bossQueued = false;
+      st.bossWarn = 3;              // the countdown reads 3, 2, 1 honestly
+      SG.audio.play('smash');
+      SG.shake(10);
+    }
+    if (st.bossWarn > 0) {
+      st.bossWarn -= dt;
+      if (st.bossWarn <= 0) spawnBoss();
     }
   }
 
@@ -422,15 +557,12 @@
       for (var b = 0; b < st.bots.length; b++) {
         var bot = st.bots[b];
         if (bot.hp <= 0) continue;
-        if (segDist(me.x, me.y, ex, ey, bot.x, bot.y) < HIT_R + 8) {
+        if (segDist(me.x, me.y, ex, ey, bot.x, bot.y) < bot.r + 8) {
           bot.hp -= 72 * mult;
           bot.hurt = 0.22;
           healed++;
           SG.burst(sx(bot.x), sy(bot.y) - 46, 12, { colors: ['#fff', '#c9ccd8'], speedMax: 240 });
-          if (bot.hp <= 0) {
-            SG.audio.play('wing');
-            SG.burst(sx(bot.x), sy(bot.y) - 50, 18, { colors: ['#ff6b8a', '#fff'], speedMax: 260, gravity: 180 });
-          }
+          if (bot.hp <= 0) killedBot(bot);
         }
       }
       // fragile, so the reward for landing it is staying alive
@@ -457,15 +589,16 @@
     for (var b = 0; b < st.bots.length; b++) {
       var bot = st.bots[b];
       if (bot.hp <= 0 || d.hit.indexOf(bot) >= 0) continue;
-      if (Math.hypot(bot.x - me.x, bot.y - me.y) < HIT_R + 30) {
+      if (Math.hypot(bot.x - me.x, bot.y - me.y) < bot.r + 30) {
         d.hit.push(bot);
         bot.hp -= 62 * powerMult('attack');
         bot.hurt = 0.24;
-        // sent flying along the dash
-        moveEntity(bot, Math.cos(d.ang) * 74, Math.sin(d.ang) * 74);
+        // sent flying along the dash - the boss is too heavy to shift
+        var shove = bot.kind === 'boss' ? 18 : 74;
+        moveEntity(bot, Math.cos(d.ang) * shove, Math.sin(d.ang) * shove);
         SG.shake(9);
         SG.burst(sx(bot.x), sy(bot.y) - 46, 16, { colors: ['#b46ad0', '#fff', '#ffd400'], speedMax: 280 });
-        SG.audio.play(bot.hp <= 0 ? 'wing' : 'smash');
+        if (bot.hp <= 0) killedBot(bot); else SG.audio.play('smash');
       }
     }
     if (d.t >= d.dur) me.dash = null;
@@ -490,30 +623,62 @@
   }
 
   // ---------------------------------------------------------------
+  /* Anything already inside a collider is allowed to move out - a
+     collider that reverts every move traps whatever spawned in it. */
   function moveEntity(e, dx, dy) {
-    var stuck = hitsCrate(e.x, e.y);
+    var s = e.scale || 1;
+    var px = 22 * s, py = 14 * s;
+    var stuck = hitsCover(e.x, e.y, px, py);
     e.x = SG.clamp(e.x + dx, 40, ARENA_W - 40);
-    if (!stuck && hitsCrate(e.x, e.y)) e.x -= dx;
+    if (!stuck && hitsCover(e.x, e.y, px, py)) e.x -= dx;
     e.y = SG.clamp(e.y + dy, 60, ARENA_H - 40);
-    if (!stuck && hitsCrate(e.x, e.y)) e.y -= dy;
+    if (!stuck && hitsCover(e.x, e.y, px, py)) e.y -= dy;
   }
 
-  function hitsCrate(x, y) {
-    for (var i = 0; i < st.crates.length; i++) {
-      var c = st.crates[i];
-      if (Math.abs(x - c.x) < c.w / 2 + 22 && Math.abs(y - c.y) < c.h / 2 + 14) return true;
+  // Round cover uses a radius, boxes an inflated rectangle. Both tests
+  // are world space - applying SQUASH here would bend everything that
+  // is offset in depth.
+  function hitsCover(x, y, px, py) {
+    px = px || 0; py = py === undefined ? px : py;
+    for (var i = 0; i < st.cover.length; i++) {
+      var c = st.cover[i];
+      if (c.r) {
+        if (Math.hypot(x - c.x, y - c.y) < c.r + px) return true;
+      } else if (Math.abs(x - c.x) < c.w / 2 + px && Math.abs(y - c.y) < c.h / 2 + py) return true;
     }
     return false;
   }
 
-  function freeSpot(x, y) {
-    for (var i = 0; i < st.crates.length; i++) {
-      var c = st.crates[i];
-      var mx = c.w / 2 + 24, my = c.h / 2 + 16;
-      var dx = Math.abs(x - c.x), dy = Math.abs(y - c.y);
-      if (dx < mx && dy < my) {
-        if (mx - dx < my - dy) x += (x < c.x ? -(mx - dx) : (mx - dx));
-        else y += (y < c.y ? -(my - dy) : (my - dy));
+  function inBush(x, y) {
+    for (var i = 0; i < st.bushes.length; i++) {
+      var b = st.bushes[i];
+      if (Math.hypot(x - b.x, y - b.y) < b.r) return b;
+    }
+    return null;
+  }
+
+  // Several passes, because shoving a spawn clear of one thing can push
+  // it straight into the next.
+  function freeSpot(x, y, pad) {
+    pad = pad || 0;
+    for (var pass = 0; pass < 4; pass++) {
+      for (var i = 0; i < st.cover.length; i++) {
+        var c = st.cover[i];
+        if (c.r) {
+          var dd = Math.hypot(x - c.x, y - c.y), need = c.r + 26 + pad;
+          if (dd < need) {
+            var a = dd > 0.01 ? Math.atan2(y - c.y, x - c.x) : 0;
+            x = c.x + Math.cos(a) * need;
+            y = c.y + Math.sin(a) * need;
+          }
+        } else {
+          var mx = c.w / 2 + 24 + pad, my = c.h / 2 + 16 + pad;
+          var dx = Math.abs(x - c.x), dy = Math.abs(y - c.y);
+          if (dx < mx && dy < my) {
+            if (mx - dx < my - dy) x += (x < c.x ? -(mx - dx) : (mx - dx));
+            else y += (y < c.y ? -(my - dy) : (my - dy));
+          }
+        }
       }
     }
     return { x: SG.clamp(x, 70, ARENA_W - 70), y: SG.clamp(y, 80, ARENA_H - 70) };
@@ -525,44 +690,122 @@
       if (b.hp <= 0) { if (b.dead < 1) b.dead += dt * 2; continue; }
       if (b.hurt > 0) b.hurt -= dt;
 
-      var dx = st.me.x - b.x, dy = st.me.y - b.y;
+      // True distance decides whether she can see through a bush; the
+      // steering target is the last place she actually saw him.
+      var pd = Math.hypot(st.me.x - b.x, st.me.y - b.y) || 1;
+      var sees = !st.hidden || pd < BUSH_SEE_R;
+      if (sees) { b.seenX = st.me.x; b.seenY = st.me.y; }
+      /* Arrived at the last place she saw him, and he is not there.
+         She casts about nearby instead of walking to his real position -
+         she is not supposed to know it, and a bush that only delays an
+         otherwise perfect tracker is not a hiding place. Wandering also
+         means she is never simply stopped, so a hidden player can't
+         freeze the round; she will blunder into him eventually. */
+      else if (Math.hypot(b.seenX - b.x, b.seenY - b.y) < 90) {
+        var wa = Math.random() * Math.PI * 2, wr = SG.rand(170, 340);
+        b.seenX = SG.clamp(b.seenX + Math.cos(wa) * wr, 80, ARENA_W - 80);
+        b.seenY = SG.clamp(b.seenY + Math.sin(wa) * wr, 90, ARENA_H - 80);
+      }
+
+      var dx = b.seenX - b.x, dy = b.seenY - b.y;
       var d = Math.hypot(dx, dy) || 1;
       var vx, vy;
 
       // Walk around cover rather than into it - otherwise she can park
       // behind a crate on the player's line and the round never ends.
+      // Chasing, she holds at shooting distance. Searching, she walks
+      // right up to the spot - otherwise she orbits a point she cannot
+      // see at exactly the range that never reveals him.
+      var standoff = sees ? 190 : 40;
       if (b.detour > 0) {
         b.detour -= dt;
         vx = -dy / d * b.strafe; vy = dx / d * b.strafe;
-      } else if (d > 190) {
+      } else if (d > standoff) {
         vx = dx / d; vy = dy / d;
       } else {
         vx = -dy / d * b.strafe * 0.9 - dx / d * 0.25;
         vy = dx / d * b.strafe * 0.9 - dy / d * 0.25;
       }
+      // Hunting is slower than chasing, so cover is worth using.
+      var sp = b.speed * (sees ? 1 : 0.6);
 
       b.phase += dt * 9;
       var bx = b.x, by = b.y;
-      moveEntity(b, vx * b.speed * dt, vy * b.speed * dt);
+      moveEntity(b, vx * sp * dt, vy * sp * dt);
       if (b.detour <= 0) {
-        if (Math.hypot(b.x - bx, b.y - by) < b.speed * dt * 0.4) {
+        if (Math.hypot(b.x - bx, b.y - by) < sp * dt * 0.4) {
           b.stuckT += dt;
-          if (b.stuckT > 0.3) { b.detour = 1.2; b.strafe *= -1; b.stuckT = 0; }
+          if (b.stuckT > 0.3) {
+            /* Long enough to actually clear the thing she is stuck on.
+               A wide body needs to travel further sideways than a runt
+               does, and a detour that expires halfway leaves her back
+               where she started. */
+            b.detour = 1.2 * (0.8 + b.scale * 0.5);
+            b.stuckT = 0;
+            /* And she only reverses every other time. Flipping on every
+               snag makes her oscillate in front of a crate for the rest
+               of the round instead of committing to one way round it -
+               which for the boss means an unkillable round. */
+            b.snags = (b.snags || 0) + 1;
+            if (b.snags % 2 === 0) b.strafe *= -1;
+          }
         } else b.stuckT = 0;
       }
 
       b.cool -= dt;
-      if (b.cool <= 0 && d < 520) {
+      if (b.cool <= 0 && sees && pd < (b.kind === 'boss' ? 620 : 520)) {
         b.cool = b.rate * SG.rand(0.85, 1.25);
-        var a = Math.atan2(dy, dx) + SG.rand(-0.16, 0.16);
-        st.shots.push({
-          x: b.x, y: b.y, mine: false,
-          vx: Math.cos(a) * 250, vy: Math.sin(a) * 250,
-          life: 2.4, dmg: 9 + st.round, rot: 0,
-        });
-        SG.audio.play('tap');
+        var aim = Math.atan2(st.me.y - b.y, st.me.x - b.x);
+        if (b.kind === 'boss') {
+          for (var s = -1; s <= 1; s++) botShot(b, aim + s * 0.20, 260);
+          SG.audio.play('smash');
+        } else {
+          botShot(b, aim + SG.rand(-0.16, 0.16), 250);
+          SG.audio.play('tap');
+        }
+      }
+
+      // The boss also throws a full ring now and then, so hugging her
+      // is not a free strategy.
+      if (b.kind === 'boss') {
+        b.ringT -= dt;
+        if (b.ringT <= 0) {
+          b.ringT = 7;
+          for (var k = 0; k < 12; k++) botShot(b, (k / 12) * Math.PI * 2, 210);
+          SG.audio.play('power');
+          SG.shake(7);
+        }
       }
     }
+  }
+
+  function botShot(b, ang, speed) {
+    st.shots.push({
+      x: b.x, y: b.y, mine: false, boss: b.kind === 'boss',
+      vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed,
+      life: 2.8, dmg: b.dmg, rot: 0,
+    });
+  }
+
+  /* One place for every way a Daley can die, so the boss payout can't
+     be missed by whichever route killed her. Her bounty is banked on
+     the spot rather than added to the round-clear bonus - dying on the
+     next Daley should not undo the hardest thing in the round. */
+  function killedBot(bot) {
+    if (bot.kind === 'boss') {
+      bankWings(220);
+      say('DALEY PRIME DOWN  +220', SG.COLORS.gold);
+      SG.audio.play('wingbig');
+      SG.shake(18);
+      SG.burst(sx(bot.x), sy(bot.y) - 70, 46, {
+        colors: ['#ff6b8a', '#ff2d6f', '#ffd400', '#fff'], speedMax: 380, gravity: 150,
+      });
+      return;
+    }
+    SG.audio.play('wing');
+    SG.burst(sx(bot.x), sy(bot.y) - 50 * bot.scale, 20, {
+      colors: ['#ff6b8a', '#ff2d6f', '#fff'], speedMax: 260, gravity: 180,
+    });
   }
 
   // Closest approach of a moving point to a target, so a fast bullet
@@ -585,24 +828,24 @@
       s.y += s.vy * dt;
       s.rot += dt * 6;
 
+      // Bullets stop on cover but sail straight through a bush - it is
+      // concealment, not protection.
       if (s.life <= 0 || s.x < 20 || s.x > ARENA_W - 20 || s.y < 30 || s.y > ARENA_H - 20 ||
-          hitsCrate(s.x, s.y)) { st.shots.splice(i, 1); continue; }
+          hitsCover(s.x, s.y, 6)) { st.shots.splice(i, 1); continue; }
 
       if (s.mine) {
         for (var b = 0; b < st.bots.length; b++) {
           var bot = st.bots[b];
           if (bot.hp <= 0) continue;
-          if (segDist(px, py, s.x, s.y, bot.x, bot.y) < HIT_R) {
+          if (segDist(px, py, s.x, s.y, bot.x, bot.y) < bot.r) {
             bot.hp -= s.dmg;
             bot.hurt = 0.16;
             // The super charges off damage dealt, so aggression pays.
             if (!s.big) addCharge(s.dmg / CHARGE_DMG);
             if (bot.hp <= 0 && !s.big) addCharge(CHARGE_KILL);
             SG.burst(sx(s.x), sy(s.y) - 46, 6, { colors: ['#ffb02e', '#fff4e0'], speedMax: 180, gravity: 260, rMax: 4, life: 0.4 });
-            if (bot.hp <= 0) {
-              SG.audio.play('wing');
-              SG.burst(sx(bot.x), sy(bot.y) - 50, 20, { colors: ['#ff6b8a', '#ff2d6f', '#fff'], speedMax: 260, gravity: 180 });
-            } else SG.audio.play('bounce');
+            if (bot.hp <= 0) killedBot(bot);
+            else SG.audio.play('bounce');
             st.shots.splice(i, 1);
             break;
           }
@@ -635,12 +878,16 @@
     drawAim(g);                       // under the characters
 
     var things = [];
-    for (var i = 0; i < st.crates.length; i++) things.push({ y: st.crates[i].y, k: 'crate', o: st.crates[i] });
+    for (var i = 0; i < st.cover.length; i++) things.push({ y: st.cover[i].y, k: 'cover', o: st.cover[i] });
+    // +10 so a bush sorts just behind whoever is standing in it and
+    // draws over them - that overlap is what sells being hidden.
+    for (var u = 0; u < st.bushes.length; u++) things.push({ y: st.bushes[u].y + 10, k: 'bush', o: st.bushes[u] });
     for (var b = 0; b < st.bots.length; b++) things.push({ y: st.bots[b].y, k: 'bot', o: st.bots[b] });
     things.push({ y: st.me.y, k: 'me', o: st.me });
     things.sort(function (a, c) { return a.y - c.y; });
     for (var t = 0; t < things.length; t++) {
-      if (things[t].k === 'crate') drawCrate(g, things[t].o);
+      if (things[t].k === 'cover') drawCover(g, things[t].o);
+      else if (things[t].k === 'bush') drawBush(g, things[t].o);
       else if (things[t].k === 'bot') drawBot(g, things[t].o);
       else drawMe(g);
     }
@@ -650,6 +897,8 @@
     g.restore();
 
     drawHUD(g);
+    if (st.phase === 'fight') drawBossBar(g);
+    if (st.phase === 'fight' && st.bossWarn > 0) drawBossWarning(g);
     if (SG.platform.touch && !sawMouse && st.phase === 'fight' && !st.paused) drawSticks(g);
     if (st.phase === 'fight') drawSuperButton(g);
 
@@ -662,7 +911,7 @@
     g.fillStyle = '#2a6b3f';
     g.fillRect(0, 0, SG.W, SG.H);
     g.fillStyle = 'rgba(255,255,255,0.03)';
-    for (var i = 0; i < 26; i++) {
+    for (var i = 0; i < 32; i++) {          // enough to cover ARENA_H
       var yy = sy(i * 44);
       if (yy > -20 && yy < SG.H + 20) g.fillRect(0, yy, SG.W, 22);
     }
@@ -730,6 +979,13 @@
     g.restore();
   }
 
+  function drawCover(g, c) {
+    if (c.kind === 'wall') return drawWall(g, c);
+    if (c.kind === 'barrel') return drawBarrel(g, c);
+    if (c.kind === 'rock') return drawRock(g, c);
+    drawCrate(g, c);
+  }
+
   function drawCrate(g, c) {
     var x = sx(c.x), y = sy(c.y);
     g.fillStyle = 'rgba(0,0,0,0.25)';
@@ -743,6 +999,127 @@
     g.lineWidth = 3;
     SG.roundRect(g, x - c.w / 2, y - h, c.w, h, 6); g.stroke();
     SG.art.boxLogo(g, x, y - h * 0.45, c.w * 0.62, 'SANTI', '#e8202a');
+  }
+
+  // Low and long: it breaks a sight line without hiding what is behind
+  // it, which is the point of having something other than crates.
+  function drawWall(g, c) {
+    var x = sx(c.x), y = sy(c.y);
+    var w = c.w, dep = c.h * SQUASH, h = 40;
+    g.fillStyle = 'rgba(0,0,0,0.25)';
+    g.beginPath(); g.ellipse(x, y + 4, w * 0.52, dep * 0.5, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#5b6470';
+    SG.roundRect(g, x - w / 2, y - h, w, h + dep * 0.5, 5); g.fill();
+    g.fillStyle = '#7c8794';
+    SG.roundRect(g, x - w / 2, y - h - dep * 0.5, w, dep, 5); g.fill();
+    g.strokeStyle = 'rgba(18,24,30,0.55)';
+    g.lineWidth = 2.5;
+    SG.roundRect(g, x - w / 2, y - h, w, h + dep * 0.5, 5); g.stroke();
+    // a couple of seams so it does not read as a flat slab
+    g.strokeStyle = 'rgba(18,24,30,0.3)';
+    g.lineWidth = 2;
+    for (var i = 1; i < 3; i++) {
+      var seam = x - w / 2 + (w / 3) * i;
+      g.beginPath(); g.moveTo(seam, y - h); g.lineTo(seam, y + dep * 0.5); g.stroke();
+    }
+  }
+
+  function drawBarrel(g, c) {
+    var x = sx(c.x), y = sy(c.y), r = c.r, h = 74;
+    g.fillStyle = 'rgba(0,0,0,0.25)';
+    g.beginPath(); g.ellipse(x, y + 4, r, r * 0.4, 0, 0, Math.PI * 2); g.fill();
+    var grad = g.createLinearGradient(x - r, 0, x + r, 0);
+    grad.addColorStop(0, '#8a3a22');
+    grad.addColorStop(0.4, '#c25e33');
+    grad.addColorStop(1, '#7a3520');
+    g.fillStyle = grad;
+    g.fillRect(x - r, y - h, r * 2, h);
+    g.beginPath(); g.ellipse(x, y, r, r * 0.4, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#d97b45';
+    g.beginPath(); g.ellipse(x, y - h, r, r * 0.4, 0, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = 'rgba(40,18,8,0.5)';
+    g.lineWidth = 3;
+    g.beginPath(); g.ellipse(x, y - h, r, r * 0.4, 0, 0, Math.PI * 2); g.stroke();
+    g.lineWidth = 4;
+    g.beginPath();
+    g.moveTo(x - r, y - h * 0.68); g.lineTo(x + r, y - h * 0.68);
+    g.moveTo(x - r, y - h * 0.28); g.lineTo(x + r, y - h * 0.28);
+    g.stroke();
+  }
+
+  function drawRock(g, c) {
+    var x = sx(c.x), y = sy(c.y), r = c.r;
+    g.fillStyle = 'rgba(0,0,0,0.25)';
+    g.beginPath(); g.ellipse(x, y + 4, r, r * 0.4, 0, 0, Math.PI * 2); g.fill();
+    g.save();
+    g.translate(x, y);
+    g.fillStyle = '#6f7580';
+    g.beginPath();
+    g.moveTo(-r, 0);
+    g.lineTo(-r * 0.78, -r * 0.72);
+    g.lineTo(-r * 0.18, -r * 1.02);
+    g.lineTo(r * 0.52, -r * 0.86);
+    g.lineTo(r, -r * 0.2);
+    g.lineTo(r * 0.72, 0);
+    g.closePath();
+    g.fill();
+    g.fillStyle = '#8b929d';
+    g.beginPath();
+    g.moveTo(-r * 0.78, -r * 0.72);
+    g.lineTo(-r * 0.18, -r * 1.02);
+    g.lineTo(r * 0.1, -r * 0.62);
+    g.lineTo(-r * 0.42, -r * 0.44);
+    g.closePath();
+    g.fill();
+    g.strokeStyle = 'rgba(30,34,40,0.5)';
+    g.lineWidth = 2.5;
+    g.beginPath();
+    g.moveTo(-r, 0);
+    g.lineTo(-r * 0.78, -r * 0.72);
+    g.lineTo(-r * 0.18, -r * 1.02);
+    g.lineTo(r * 0.52, -r * 0.86);
+    g.lineTo(r, -r * 0.2);
+    g.stroke();
+    g.restore();
+  }
+
+  /* A bush is a clump of leaves you can walk into. It blocks nothing
+     and stops no bullets - it only breaks her line of sight, so it
+     rewards moving rather than parking. */
+  function drawBush(g, b) {
+    var x = sx(b.x), y = sy(b.y), r = b.r;
+    g.save();
+    g.fillStyle = 'rgba(0,0,0,0.2)';
+    g.beginPath(); g.ellipse(x, y + 6, r * 0.95, r * 0.34, 0, 0, Math.PI * 2); g.fill();
+
+    var blobs = [
+      [-0.62, -0.10, 0.46], [0.60, -0.12, 0.44], [-0.24, -0.44, 0.52],
+      [0.28, -0.46, 0.50], [0.02, -0.12, 0.60], [-0.72, -0.42, 0.32],
+      [0.74, -0.40, 0.32],
+    ];
+    var i, bl;
+    g.fillStyle = '#1f5c30';
+    for (i = 0; i < blobs.length; i++) {
+      bl = blobs[i];
+      g.beginPath();
+      g.ellipse(x + bl[0] * r, y + bl[1] * r * 0.9, bl[2] * r, bl[2] * r * 0.78, 0, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.fillStyle = '#2f8043';
+    for (i = 0; i < blobs.length; i++) {
+      bl = blobs[i];
+      g.beginPath();
+      g.ellipse(x + bl[0] * r, y + bl[1] * r * 0.9 - 7, bl[2] * r * 0.84, bl[2] * r * 0.62, 0, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.fillStyle = 'rgba(120,205,120,0.35)';
+    for (i = 0; i < blobs.length; i += 2) {
+      bl = blobs[i];
+      g.beginPath();
+      g.ellipse(x + bl[0] * r - 5, y + bl[1] * r * 0.9 - 14, bl[2] * r * 0.42, bl[2] * r * 0.26, -0.4, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.restore();
   }
 
   function drawMe(g) {
@@ -766,6 +1143,8 @@
     shadow(g, x, y, 40);
     g.save();
     if (me.hurtT < 0.25 && Math.floor(st.t * 24) % 2 === 0) g.globalAlpha = 0.45;
+    // He fades but never vanishes - you have to be able to see yourself.
+    if (st.hidden) g.globalAlpha *= 0.5;
     if (me.superFx > 0 || me.dash) {
       g.shadowColor = SUPERS[st.kit.id].color;
       g.shadowBlur = 26;
@@ -779,6 +1158,11 @@
     g.restore();
     healthBar(g, x, y - BODY_H - 30, me.hp / me.maxHp, '#4dd47a', 66);
     ammoPips(g, x, y + 12);
+    if (st.hidden) {
+      SG.ui.text(g, 'HIDDEN', x, y - BODY_H - 46, {
+        size: 12, color: '#7fe39a', stroke: '#0e2415', strokeWidth: 4, shadow: false,
+      });
+    }
   }
 
   function ammoPips(g, x, y) {
@@ -800,29 +1184,38 @@
 
   function drawBot(g, b) {
     var x = sx(b.x), y = sy(b.y);
+    var s = b.scale;
     if (b.hp <= 0) {
       if (b.dead >= 1) return;
       g.save();
       g.globalAlpha = 1 - b.dead;
       g.translate(x, y);
       g.scale(1, 1 - b.dead * 0.4);
-      drawHeart(g, 0, -60, 1.6 + b.dead * 2, 0);
+      drawHeart(g, 0, -60 * s, (1.6 + b.dead * 2) * s, 0);
       g.restore();
       return;
     }
-    shadow(g, x, y, 36);
+    shadow(g, x, y, 36 * s);
     g.save();
     if (b.hurt > 0) g.globalAlpha = 0.55;
-    SG.art.drawSanti(g, x, y, BODY_H * 0.94, b.phase, {
+    if (b.kind === 'boss') {
+      g.shadowColor = '#ff2d6f';
+      g.shadowBlur = 22 + Math.sin(st.t * 5) * 8;
+    }
+    SG.art.drawSanti(g, x, y, BODY_H * 0.94 * s, b.phase, {
       face: 'daley', shirt: b.shirt, boxColor: '#ffd400', boxInk: '#17120a', pants: '#20263f', run: 1,
     });
     g.restore();
-    healthBar(g, x, y - BODY_H - 22, b.hp / b.maxHp, '#ff6b8a', 50);
+
+    // The boss carries her health at the top of the screen instead.
+    if (b.kind !== 'boss') {
+      healthBar(g, x, y - BODY_H * s - 22, b.hp / b.maxHp, '#ff6b8a', 50 * s);
+    }
 
     if (Math.floor(st.t * 2 + b.phase) % 4 === 0) {
       g.save();
       g.globalAlpha = 0.5;
-      drawHeart(g, x + Math.sin(st.t * 3 + b.phase) * 16, y - BODY_H - 36 - (st.t * 20 % 22), 0.5, 0);
+      drawHeart(g, x + Math.sin(st.t * 3 + b.phase) * 16, y - BODY_H * s - 36 - (st.t * 20 % 22), 0.5 * s, 0);
       g.restore();
     }
   }
@@ -851,7 +1244,7 @@
         SG.art.drawWing(g, x, y - 46, 1.7, s.rot + st.t * 9);
         g.restore();
       } else if (s.mine) SG.art.drawWing(g, x, y - 46, 1.05, s.rot);
-      else drawHeart(g, x, y - 44, 0.85, Math.sin(s.rot) * 0.3);
+      else drawHeart(g, x, y - 44, s.boss ? 1.35 : 0.85, Math.sin(s.rot) * 0.3);
     }
   }
 
@@ -923,6 +1316,62 @@
         size: 15, color: sp.color, stroke: '#14102a', strokeWidth: 5, shadow: false,
       });
     }
+  }
+
+  /* The boss gets the top of the screen and exact numbers. A fraction
+     of a bar tells you nothing when the fight is a minute long - the
+     count is what says whether you are winning. Centred, so it clears
+     the round panel on the left and the wing count on the right. */
+  function drawBossBar(g) {
+    var b = st.boss;
+    if (!b || b.hp <= 0) return;
+    var w = Math.min(560, SG.W - 400), x = SG.W / 2 - w / 2, y = 74, h = 24;
+    var frac = SG.clamp(b.hp / b.maxHp, 0, 1);
+
+    SG.ui.text(g, 'DALEY PRIME', SG.W / 2, y - 12, {
+      size: 15, color: '#ff8fa8', stroke: '#2a0713', strokeWidth: 5, shadow: false,
+    });
+
+    g.fillStyle = 'rgba(8,6,16,0.82)';
+    SG.roundRect(g, x - 3, y - 3, w + 6, h + 6, 8); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.10)';
+    SG.roundRect(g, x, y, w, h, 6); g.fill();
+
+    var grad = g.createLinearGradient(x, 0, x + w, 0);
+    grad.addColorStop(0, '#ff2d6f');
+    grad.addColorStop(1, '#ff8fa8');
+    g.fillStyle = grad;
+    SG.roundRect(g, x, y, Math.max(6, w * frac), h, 6); g.fill();
+
+    g.strokeStyle = 'rgba(255,180,200,0.55)';
+    g.lineWidth = 2;
+    SG.roundRect(g, x, y, w, h, 6); g.stroke();
+
+    SG.ui.text(g, Math.ceil(b.hp) + ' / ' + Math.round(b.maxHp), SG.W / 2, y + h / 2, {
+      size: 14, color: '#fff', stroke: '#2a0713', strokeWidth: 4, shadow: false,
+    });
+  }
+
+  // Two and a half seconds of being told, loudly, to find some cover.
+  function drawBossWarning(g) {
+    var k = st.bossWarn;
+    var pulse = 0.5 + Math.sin(st.t * 14) * 0.5;
+    g.save();
+    g.globalAlpha = 0.16 + pulse * 0.16;
+    g.fillStyle = '#c1002f';
+    g.fillRect(0, 0, SG.W, SG.H);
+    g.restore();
+
+    g.save();
+    g.globalAlpha = 0.5 + pulse * 0.5;
+    SG.art.tag(g, 'BOSS INCOMING', SG.W / 2, SG.H / 2 - 30, 52, '#ff2d6f', -0.03);
+    g.restore();
+    SG.ui.text(g, 'A very big Daley is on her way', SG.W / 2, SG.H / 2 + 16, {
+      size: 15, color: 'rgba(255,255,255,0.8)', stroke: '#2a0713', strokeWidth: 5, shadow: false,
+    });
+    SG.ui.text(g, Math.max(1, Math.ceil(k)) + '...', SG.W / 2, SG.H / 2 + 48, {
+      size: 22, color: '#ffd400', stroke: '#2a0713', strokeWidth: 5, shadow: false,
+    });
   }
 
   function drawHeart(g, x, y, s, rot) {
@@ -1089,10 +1538,12 @@
     }
 
     // The armed-super prompt owns the bottom line while it is up.
-    if (st.round === 1 && st.t < 8 && st.phase === 'fight') {
-      SG.ui.text(g, SG.platform.touch
-        ? 'LEFT THUMB MOVES  ·  HOLD RIGHT TO AIM, RELEASE TO SHOOT'
-        : 'WASD TO MOVE  ·  HOLD LEFT MOUSE TO AIM, RELEASE TO SHOOT',
+    if (st.round === 1 && st.t < 13 && st.phase === 'fight') {
+      SG.ui.text(g, st.t < 7
+        ? (SG.platform.touch
+          ? 'LEFT THUMB MOVES  ·  HOLD RIGHT TO AIM, RELEASE TO SHOOT'
+          : 'WASD TO MOVE  ·  HOLD LEFT MOUSE TO AIM, RELEASE TO SHOOT')
+        : 'STAND IN A BUSH TO DISAPPEAR  ·  SHOOTING GIVES YOU AWAY',
         SG.W / 2, SG.H - 26, {
           size: 14, color: 'rgba(255,255,255,0.65)', stroke: '#0d2a18', strokeWidth: 4, shadow: false,
         });

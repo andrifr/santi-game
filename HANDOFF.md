@@ -56,7 +56,7 @@ confirm before anything outward-facing that isn't a normal deploy.
 
 ### Deploy checklist
 
-- Bump **every** `?v=` in `index.html` (currently **65**). Forgetting
+- Bump **every** `?v=` in `index.html` (currently **66**). Forgetting
   this means testing a file that isn't running — it has bitten twice,
   including once mid-session when the browser served a cached `engine.js`
   without a function I'd just added.
@@ -131,6 +131,26 @@ auto-aimed at the nearest, no arming step. Wing Storm (ring of 12
 wings), The Lean (dash through with afterimages), Noir Shot (pierces the
 arena, heals per hit). The Super is printed on the draft card.
 
+The arena is 2000×1300 with 18 pieces of cover in four shapes (crate,
+concrete wall, barrel, boulder) and 11 **bushes**. A bush blocks
+nothing and stops no bullets — it only breaks line of sight. Standing
+in one hides you until you shoot (`BUSH_REVEAL`, 1s) or a Daley gets
+within `BUSH_SEE_R` (175). Measured: hiding cuts incoming fire from
+121 shots per 40s to 45, with 4.3s of total safety before the first
+one blunders in.
+
+Daleys come in three sizes via `BOT_KINDS` — runt (0.66×, 40% health,
+faster), normal, and the boss. **Everything size-dependent goes
+through `scale`**: hitbox, sprite, shadow, health bar and the padding
+she keeps off cover.
+
+Every fifth round is a **boss round**. Once half the Daleys are down,
+a 3-second BOSS INCOMING warning fires and Daley Prime arrives at the
+far end — ~992 HP at round 5, with her exact HP on a bar at the top of
+the screen. She is slower than every kit (71 vs 174–240) so she can
+always be outrun, and the round cannot be won while a boss is still
+owed, even if you wipe the field during the warning.
+
 The thumb sticks are Brawl Stars style: **always on screen** at a
 resting spot (blue bottom-left for movement, red with a target
 bottom-right for shooting), they **jump to wherever the thumb lands**
@@ -149,7 +169,13 @@ until Santi reaches it, then swaps to the smurf flag. Gargamel can be
 stunned by dropping on his head from the bouncy toadstool, not only by
 waiting for his slam.
 
-**Santi Simulator** — the day is seeded off `save.data.simDays`, so it's
+**Santi Simulator** — **he speaks in the first person throughout.** A
+handful of flavour lines had slipped into third person ("He knows every
+word") against a voice that was otherwise "I"; they were corrected. The
+only remaining third-person mentions of him are other characters
+addressing him and his own video intro. Keep new lines in "I".
+
+The day is seeded off `save.data.simDays`, so it's
 consistent within a day and different tomorrow. 10–14 jobs shuffled from
 a pool, order-dependent ones moving as blocks. Different video, poster,
 and night visitor each day (Daley ×3, Rue ×2, Krampus, K3, Plop — never

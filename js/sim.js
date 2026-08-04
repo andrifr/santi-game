@@ -39,7 +39,7 @@
       { id: 'clock',     x: 400,  w: 60,  kind: 'clock',     label: 'ALARM',
         flavor: ["It's 11:40. Bit late.", 'Snoozed six times.',
                  'The alarm did its best.', 'Set for 7. Purely decorative.',
-                 'It went off. He remembers it going off.'] },
+                 'It went off. I remember it going off.'] },
       { id: 'poster',    x: 600,  w: 110, kind: 'poster',    label: 'POSTER', onWall: true,
         flavor: ['1.2M subscribers. One day.', 'SANTI CAN\'T - the poster.',
                  'Straight. Finally straight.', 'Daley says it is crooked. It is not.'] },
@@ -61,11 +61,11 @@
       { id: 'shoes',     x: 1900, w: 120, kind: 'shoes',     label: 'SHOES',
         flavor: ['Fresh. Obviously.', 'These ones. Always these ones.',
                  'Not for outside. These are inside shoes now.',
-                 'Cleaned with a toothbrush. His toothbrush.'] },
+                 'Cleaned with a toothbrush. My toothbrush.'] },
 
       { id: 'guitar',    x: 500,  w: 70,  kind: 'guitar',    label: 'GUITAR',
         flavor: ['Three chords. Two of them good.', 'It has been in tune once.',
-                 'He only ever plays Azizam on it.', 'Daley has heard Azizam enough now.'] },
+                 'I only ever play Azizam on it.', 'Daley has heard Azizam enough now.'] },
 
       // --- living room ---
       { id: 'couch',     x: 2130, w: 280, kind: 'couch',     label: 'COUCH',
@@ -75,9 +75,9 @@
       { id: 'stereo',    x: 1450, w: 90,  kind: 'stereo',    label: 'SPEAKER',
         flavor: ['K3 is already queued.', 'The neighbours know every word by now.',
                  'Full volume. Correct volume.',
-                 'He knows every word. Every single word.',
+                 'I know every word. Every single word.',
                  'The neighbours have stopped complaining. They gave up.',
-                 'Daley says he sings it wrong. He does not.',
+                 'Daley says I sing it wrong. I do not.',
                  'Dance moves included, free of charge.'] },
       { id: 'tv',        x: 2400, w: 180, kind: 'tv',        label: 'TV',
         flavor: ['Nothing on.', 'Fortnite later. Promise.',
@@ -96,7 +96,7 @@
       { id: 'microwave', x: 3380, w: 140, kind: 'microwave', label: 'MICROWAVE' },
       { id: 'wings',     x: 3520, w: 120, kind: 'wings',     label: 'CHICKEN WINGS' },
       { id: 'plant',     x: 3640, w: 70,  kind: 'plant',     label: 'THE PLANT',
-        flavor: ['Still alive. Somehow.', 'It has seen things.', 'Daley named it. He forgot the name.'] },
+        flavor: ['Still alive. Somehow.', 'It has seen things.', 'Daley named it. I forgot the name.'] },
 
       // --- hall / outside ---
       { id: 'leash',     x: 3660, w: 60,  kind: 'leash',     label: 'LEASH', onWall: true },
@@ -113,7 +113,7 @@
                  'Someone carved a K3 lyric into it.',
                  'Still damp. It is always damp.'] },
       { id: 'bike',      x: 4300, w: 110, kind: 'bike',      label: 'BIKE',
-        flavor: ['Someone locked it to itself.', 'Flat since March.', 'Not his. Definitely not his.'] },
+        flavor: ['Someone locked it to itself.', 'Flat since March.', 'Not mine. Definitely not mine.'] },
     ];
   }
 
@@ -187,7 +187,7 @@
     { id: 'call',   title: 'CALL DALEY',        hint: 'Give her a ring',           target: 'phone' },
     { id: 'game',   title: 'ONE QUICK GAME',    hint: 'It is never one game',      target: 'console' },
     { id: 'plant',  title: 'THE PLANT',         hint: 'Water it before it dies',   target: 'plant' },
-    { id: 'guitar', title: 'AZIZAM',            hint: 'The one song he knows',     target: 'guitar' },
+    { id: 'guitar', title: 'AZIZAM',            hint: 'The one song I know',       target: 'guitar' },
     { id: 'sleep',  title: 'GO TO SLEEP',       hint: 'Back to bed',               target: 'bed' },
   ];
 
@@ -722,7 +722,7 @@
             say(SG.pick([
               'Azizam. Again.',
               'It is always Azizam.',
-              'He does the Ed Sheeran loop bit and everything.',
+              'I do the Ed Sheeran loop bit and everything.',
               'Word perfect. Chords approximate.',
             ]));
             closeOverlay(true);
