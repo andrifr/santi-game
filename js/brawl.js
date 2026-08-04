@@ -116,7 +116,7 @@
       ammo: MAX_AMMO, reload: 0,
       phase: 0, moving: false,
       hurtT: 99, shotT: 99, flash: 0,
-      charge: 0, superArmed: false, dash: null, superFx: 0,
+      charge: 0, dash: null, superFx: 0,
     };
     st.bots = [];
     st.shots = [];
@@ -166,8 +166,8 @@
     if (st.paused || st.phase !== 'fight') return;
 
     // Claimed before readControls, or the same tap also aims and fires.
-    if (SG.input.tappedRect(superRect())) { armSuper(); return; }
-    if (SG.input.keys.KeyE && !st.superKeyWas) armSuper();
+    if (SG.input.tappedRect(superRect())) { pressSuper(); return; }
+    if (SG.input.keys.KeyE && !st.superKeyWas) pressSuper();
     st.superKeyWas = !!SG.input.keys.KeyE;
 
     if (SG.input.tappedRect(pauseRect())) {
@@ -314,7 +314,8 @@
     }
   }
 
-  function superRect() { return { x: SG.W - 120, y: SG.H - 124, w: 98, h: 98 }; }
+  // Big, because it is a one-press button and it is pressed in a panic.
+  function superRect() { return { x: SG.W - 168, y: SG.H - 168, w: 148, h: 148 }; }
   function inRect(x, y, r) { return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h; }
 
   function addCharge(amount) {
@@ -328,24 +329,26 @@
     }
   }
 
-  function armSuper() {
+  /* One press, and it goes. Aiming it was a step too many - by the time
+     you have armed it and lined it up, the thing you wanted it for has
+     already hit you. If you happen to be holding an aim it uses that,
+     otherwise it points itself at whoever is nearest. */
+  function pressSuper() {
     var me = st.me;
     if (!me || me.charge < 1) { SG.audio.play('back'); return; }
-    me.superArmed = !me.superArmed;
-    SG.audio.play(me.superArmed ? 'select' : 'tap');
+    var ang;
+    if (st.aim && st.aim.mag > DEAD) {
+      ang = st.aim.ang;
+    } else {
+      var near = nearestBot();
+      ang = near ? Math.atan2(near.y - me.y, near.x - me.x) : 0;
+    }
+    fireSuper(ang);
   }
 
   // `ang` null means auto-aim at whoever is closest.
   function fire(ang) {
     var me = st.me;
-    if (me.superArmed && me.charge >= 1) {
-      if (ang === null) {
-        var target = nearestBot();
-        ang = target ? Math.atan2(target.y - me.y, target.x - me.x) : 0;
-      }
-      fireSuper(ang);
-      return;
-    }
     if (me.ammo < 1) { SG.audio.play('back'); return; }
     if (ang === null) {
       var near = nearestBot();
@@ -380,7 +383,6 @@
     var id = st.kit.id;
     var mult = powerMult('attack');
     me.charge = 0;
-    me.superArmed = false;
     me.superFx = 0.55;
     me.shotT = 0;
 
@@ -895,22 +897,22 @@
 
     if (full) {
       g.shadowColor = sp.color;
-      g.shadowBlur = me.superArmed ? 26 : 14;
-      g.fillStyle = me.superArmed ? sp.color : 'rgba(255,255,255,0.12)';
+      g.shadowBlur = 20 + Math.sin(st.t * 6) * 6;
+      g.fillStyle = sp.color;
       g.beginPath(); g.arc(cx, cy, rad - 15, 0, Math.PI * 2); g.fill();
       g.shadowBlur = 0;
     }
 
     SG.ui.text(g, full ? sp.short : Math.floor(me.charge * 100) + '%', cx, cy,
-      { size: full ? 15 : 14, color: me.superArmed ? '#17120a' : '#fff', shadow: false });
-    if (full && !me.superArmed) {
-      SG.ui.text(g, 'TAP', cx, cy + 18, { size: 10, color: 'rgba(255,255,255,0.6)', shadow: false });
+      { size: full ? 19 : 17, color: full ? '#17120a' : '#fff', shadow: false });
+    if (full) {
+      SG.ui.text(g, 'TAP TO FIRE', cx, cy + 24, { size: 11, color: 'rgba(20,14,6,0.75)', shadow: false });
     }
     g.restore();
 
-    if (me.superArmed) {
-      SG.ui.text(g, sp.name + ' - AIM AND RELEASE', SG.W / 2, SG.H - 26, {
-        size: 14, color: sp.color, stroke: '#14102a', strokeWidth: 5, shadow: false,
+    if (full) {
+      SG.ui.text(g, sp.name, cx, r.y - 12, {
+        size: 15, color: sp.color, stroke: '#14102a', strokeWidth: 5, shadow: false,
       });
     }
   }
@@ -1002,7 +1004,7 @@
     }
 
     // The armed-super prompt owns the bottom line while it is up.
-    if (st.round === 1 && st.t < 8 && st.phase === 'fight' && !(st.me && st.me.superArmed)) {
+    if (st.round === 1 && st.t < 8 && st.phase === 'fight') {
       SG.ui.text(g, SG.platform.touch
         ? 'LEFT THUMB MOVES  ·  HOLD RIGHT TO AIM, RELEASE TO SHOOT'
         : 'WASD TO MOVE  ·  HOLD LEFT MOUSE TO AIM, RELEASE TO SHOOT',

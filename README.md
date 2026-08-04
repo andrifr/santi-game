@@ -132,8 +132,11 @@ trigger down.
 neither shooting nor being hit.
 
 **Every Santi has a different Super**, charged by damage dealt — about
-two and a half Daleys' worth. When the ring fills, tap the button
-(bottom right, or `E`), then aim and release as normal.
+two and a half Daleys' worth. When the ring fills, **press the big
+button** (bottom right, or `E`) and it goes. One press, no aiming: it
+points itself at whoever is nearest, or along your aim if you happen to
+be holding one. Arming it and then lining it up was a step too many —
+by the time you'd done both, the thing you wanted it for had hit you.
 
 | | Super | |
 | --- | --- | --- |
