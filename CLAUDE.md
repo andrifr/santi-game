@@ -165,10 +165,10 @@ route out of a mode, it has to call `cashIn()` too.
 ### Audio
 
 All effects are synthesized (`SG.audio.play(name)`), so there is no load
-cost. `SG.audio.melody([[semitone, beats], ...])` plays a short tune the
-same way — used by the Simulator's speaker. **Tunes in this project are
-written, not sampled.** No ripped or third-party audio ships here: the
-site is public, so anything added to it is published, not private. Two recorded clips are the exception, loaded via
+cost. **No third-party audio ships here** — the repo is public and Pages
+serves it, so anything committed is published, not private. The only
+recorded clips are the family's own (`assets/k3songs/` is gitignored for
+this reason). Two recorded clips are the exception, loaded via
 `SG.audio.loadSample()` and falling back to the synth cue if a file is
 missing or won't decode. iOS cannot create an AudioContext before the
 first touch, so samples are fetched immediately and decoded on that tap.

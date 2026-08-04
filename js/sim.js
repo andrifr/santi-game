@@ -73,7 +73,12 @@
       { id: 'console',   x: 710, w: 90,  kind: 'console',   label: 'CONSOLE',
         flavor: ['One game. One.', 'Fortnite. Obviously.', 'Brawl Stars until the battery dies.'] },
       { id: 'stereo',    x: 1450, w: 90,  kind: 'stereo',    label: 'SPEAKER',
-        flavor: ['K3 is already queued.', 'The neighbours know every word by now.'] },
+        flavor: ['K3 is already queued.', 'The neighbours know every word by now.',
+                 'Full volume. Correct volume.',
+                 'He knows every word. Every single word.',
+                 'The neighbours have stopped complaining. They gave up.',
+                 'Daley says he sings it wrong. He does not.',
+                 'Dance moves included, free of charge.'] },
       { id: 'tv',        x: 2400, w: 180, kind: 'tv',        label: 'TV',
         flavor: ['Nothing on.', 'Fortnite later. Promise.',
                  'Paused three weeks ago. Still paused.',
@@ -86,7 +91,8 @@
         flavor: ['Hot sauce. Three bottles.', 'Mostly hot sauce in here.',
                  'One yoghurt. Expired. Load-bearing.',
                  'Daley labelled her cheese. Bold.'] },
-      { id: 'counter',   x: 3160, w: 240, kind: 'counter',   label: 'BREAD + CHEESE' },
+      { id: 'counter',   x: 3160, w: 240, kind: 'counter',   label: 'CASH TOPIT',
+        flavor: ['Cash topit. The only breakfast.', 'Bread. Cheese. Microwave. Done.'] },
       { id: 'microwave', x: 3380, w: 140, kind: 'microwave', label: 'MICROWAVE' },
       { id: 'wings',     x: 3520, w: 120, kind: 'wings',     label: 'CHICKEN WINGS' },
       { id: 'plant',     x: 3640, w: 70,  kind: 'plant',     label: 'THE PLANT',
@@ -168,8 +174,8 @@
 
   var ALL_TASKS = [
     { id: 'wake',   title: 'WAKE UP',           hint: 'Get out of bed',            target: 'bed' },
-    { id: 'grab',   title: 'BREAD WITH CHEESE', hint: 'Grab the bread and cheese', target: 'counter' },
-    { id: 'nuke',   title: 'BREAD WITH CHEESE', hint: 'Microwave it',              target: 'microwave' },
+    { id: 'grab',   title: 'CASH TOPIT',        hint: 'Bread and cheese, get it out', target: 'counter' },
+    { id: 'nuke',   title: 'CASH TOPIT',        hint: 'Melt it. Properly.',        target: 'microwave' },
     { id: 'hair',   title: 'THE HAIR',          hint: 'Hairspray. Obviously.',     target: 'hairspray' },
     { id: 'shirt',  title: 'PICK A FIT',        hint: 'Choose a Supreme tee',      target: 'rack' },
     { id: 'leash',  title: 'WALK RUE',          hint: 'Grab the leash',            target: 'leash' },
@@ -220,7 +226,7 @@
 
   // ---- a different video every day -------------------------------
   var VIDEOS = [
-    { t: 'MICROWAVE BREAD (GONE WRONG)', l: '"Yo what is up, Santi here"', v: 12400 },
+    { t: 'MAKING CASH TOPIT (GONE WRONG)', l: '"Yo what is up, Santi here"', v: 12400 },
     { t: 'I ATE 100 CHICKEN WINGS',      l: '"This might end me"',        v: 84300 },
     { t: 'HOTTEST SAUCE IN BELGIUM',     l: '"I am not crying, you are"',  v: 41200 },
     { t: 'RATING MY GIRLFRIEND\'S FITS', l: '"She will not see this"',     v: 63800 },
@@ -262,7 +268,7 @@
       { w: 'krampus', t: 'HO. HO. NO.' },
       { w: 'santi',   t: 'It is not even December.' },
       { w: 'krampus', t: 'I WORK YEAR ROUND NOW.' },
-      { w: 'krampus', t: 'THE LIST SAYS: MICROWAVED BREAD.' },
+      { w: 'krampus', t: 'THE LIST SAYS: CASH TOPIT. AGAIN.' },
       { w: 'santi',   t: 'Lap.' },
     ] },
     { who: 'plop', lines: [
@@ -295,17 +301,23 @@
     { label: 'RUE',         sub: 'GOOD DOG', bg: '#3a2e22', ink: '#f0d8a8' },
   ];
 
+  /* Santi on the subject of his dog, rather than a description of what
+     the dog is doing. */
   var RUE_LINES = [
-    'She looks up. She does not move.',
-    'Tail going. Legs not.',
-    'She has found a smell. This is now her life.',
-    'Rue has decided this lamppost is important.',
-    'She is looking at you. Just looking.',
-    'One ear up. Something happened somewhere.',
-    'She sits down. In the middle of the pavement.',
-    'Good dog. Objectively.',
-    'She wants to go home. You just left the house.',
-    'Rue sighs. Very deeply, for a dog.',
+    'She has one job. She does not know what it is.',
+    'Rue. We have talked about this.',
+    'Nine kilos of pure opinion.',
+    'She has never come when called. Not once. Not ever.',
+    'I would take a bullet for her. She would not.',
+    'That face has cost me a serious amount of money.',
+    'She thinks she is a big dog. She is not a big dog.',
+    'People say she looks like me. Rude to both of us.',
+    'She barks at the wind. Only the wind. Never at burglars.',
+    'Whole personality, and none of it is obedience.',
+    'Daley says she is MY dog when she does this.',
+    'If she could talk she would only complain.',
+    'She has eaten things I am not allowed to talk about.',
+    'Lap. She is doing the thing again.',
   ];
 
   var WINGS_PER_TASK = 40;
@@ -330,7 +342,6 @@
       poster: pickFresh(day, 449, POSTERS),
       rueLines: rshuffle(rngFor(day, 563), RUE_LINES),
       rueSaid: 0,
-      tune: -1, tuneSaid: 0, dancing: 0,
       x: 250, vx: 0, facing: 1, walkPhase: 0,
       targetX: null, pending: null,          // object to use on arrival
       cam: 0,
@@ -395,7 +406,6 @@
     var isTarget = tk && tk.target === o.id;
 
     if (o.id === 'sink') { lookInMirror(); return; }
-    if (o.id === 'stereo') { playStereo(); return; }   // never a chore, always available
 
     if (!isTarget) {
       // Everything is pokeable, it just doesn't move the day along.
@@ -413,7 +423,7 @@
 
       case 'grab':
         st.hasFood = true;
-        say('Bread. Cheese. A plan.');
+        say(SG.pick(['Cash topit. Let us go.', 'Bread. Cheese. A plan.', 'The good stuff.']));
         completeTask();
         break;
 
@@ -528,31 +538,6 @@
     }
   }
 
-  /* The speaker. Original bouncy tunes written as note numbers - the
-     whole game's audio is synthesized and nothing sampled ships here. */
-  var TUNES = [
-    [[4, 1], [4, 1], [7, 1], [9, 1], [7, 2], [4, 2], [2, 1], [4, 1], [5, 2], [4, 2]],
-    [[0, 1], [4, 1], [7, 1], [12, 2], [11, 1], [9, 1], [7, 2], [4, 1], [5, 1], [7, 3]],
-    [[9, 1], [7, 1], [5, 1], [4, 1], [5, 1], [7, 1], [9, 2], [11, 1], [12, 3]],
-    [[7, 1], [7, 1], [9, 1], [7, 1], [4, 2], [2, 1], [4, 1], [7, 2], [4, 2]],
-  ];
-
-  var STEREO_LINES = [
-    'Full volume. Correct volume.',
-    'He knows every word. Every single word.',
-    'The neighbours have stopped complaining. They gave up.',
-    'This one is the good one.',
-    'Daley says he sings it wrong. He does not.',
-    'Dance moves included, free of charge.',
-  ];
-
-  function playStereo() {
-    st.tune = (st.tune + 1) % TUNES.length;
-    st.dancing = 2.6;
-    SG.audio.melody(TUNES[st.tune], { beat: 0.17, vol: 0.16 });
-    say(STEREO_LINES[st.tuneSaid++ % STEREO_LINES.length]);
-  }
-
   function openOverlay(name, data) {
     st.overlay = name;
     st.ov = data || {};
@@ -573,7 +558,6 @@
     if (st.bubble) { st.bubbleT += dt; if (st.bubbleT > 3) st.bubble = null; }
     if (st.flash > 0) st.flash -= dt;
     if (st.mirrorScare > 0) st.mirrorScare -= dt;
-    if (st.dancing > 0) st.dancing -= dt;
 
     if (st.paused) { handlePauseTaps(); return; }
 
@@ -691,7 +675,10 @@
       case 'nuke':
         o.t += dt;
         if (o.t >= o.dur && !o.done) { o.done = true; SG.audio.play('wingbig'); }
-        if (o.done && SG.input.takeTap()) { say('Warm. Melty. Correct.'); closeOverlay(true); }
+        if (o.done && SG.input.takeTap()) {
+          say(SG.pick(['Warm. Melty. Correct.', 'Cash topit. Every single day.', 'That is the one.']));
+          closeOverlay(true);
+        }
         break;
 
       case 'spray':
@@ -957,20 +944,7 @@
         SG.roundRect(g, x - 26, base - 96, 52, 96, 7); g.fill();
         g.strokeStyle = 'rgba(255,255,255,0.16)'; g.lineWidth = 2;
         SG.roundRect(g, x - 26, base - 96, 52, 96, 7); g.stroke();
-        // thumps harder while a tune is actually going
-        var live = st.dancing > 0;
-        var thump = 1 + Math.sin(st.t * (live ? 17 : 9)) * (live ? 0.16 : 0.07);
-        if (live) {
-          for (var nb = 0; nb < 3; nb++) {
-            var nba = st.t * 4 + nb * 2.1;
-            g.save();
-            g.globalAlpha = 0.35 + Math.sin(nba) * 0.3;
-            SG.ui.text(g, '♪', x + 30 + nb * 16, base - 110 + Math.sin(nba) * 16, {
-              size: 17, color: '#ff8ad8', shadow: false,
-            });
-            g.restore();
-          }
-        }
+        var thump = 1 + Math.sin(st.t * 9) * 0.07;
         g.fillStyle = '#141018';
         g.beginPath(); g.arc(x, base - 66, 17 * thump, 0, Math.PI * 2); g.fill();
         g.fillStyle = '#4a4258';
@@ -1464,13 +1438,16 @@
     switch (st.overlay) {
       case 'nuke': {
         SG.ui.panel(g, CX - 200, 120, 400, 260);
-        SG.ui.text(g, 'MICROWAVE', CX, 162, { size: 26, color: '#ffd400', shadow: false });
+        SG.ui.text(g, 'CASH TOPIT', CX, 156, { size: 26, color: '#ffd400', shadow: false });
+        SG.ui.text(g, 'IN THE MICROWAVE', CX, 180, {
+          size: 12, color: 'rgba(255,255,255,0.5)', shadow: false,
+        });
         var frac = SG.clamp(o.t / o.dur, 0, 1);
         g.fillStyle = 'rgba(0,0,0,0.5)';
         SG.roundRect(g, CX - 140, 210, 280, 22, 11); g.fill();
         g.fillStyle = o.done ? '#4dd47a' : '#ffb02e';
         SG.roundRect(g, CX - 140, 210, 280 * frac, 22, 11); g.fill();
-        // bread with cheese, melting
+        // cash topit, melting
         g.fillStyle = '#e8c17a';
         SG.roundRect(g, CX - 52, 262, 104, 46, 10); g.fill();
         g.strokeStyle = '#a8763a'; g.lineWidth = 3; g.stroke();
