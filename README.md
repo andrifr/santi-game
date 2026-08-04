@@ -194,8 +194,9 @@ box hangs low enough that a *tapped* jump reaches its underside.
 At the end of each level the waffles are **traded for chicken wings** at
 5:1, and you watch the count tick over. It happens on a clear, on a
 death, on a restart and on quitting to the menu, so stopping never costs
-you the ones you found. A cleared level pays 80 wings on top, Gargamel
-260.
+you the ones you found. A cleared level pays 80 wings on top, and
+Gargamel is worth **100** — stated on the victory panel, because a
+bounty paid silently is a bounty nobody believes they got.
 
 **Question boxes** hold one of three:
 
@@ -218,6 +219,12 @@ summons gnaps. He can't be touched on his feet — but every so often he
 leaps at you, lands hard and collapses onto his knees with his head
 down, and the acid on the floor fizzles out with him. That is the
 window, and the game says so out loud. Three stomps and he's finished.
+
+You don't have to wait for one, though. **The bouncy toadstool in the
+middle of the arena throws you 228px up — his head is at 168 — so you
+can drop on him and put him down yourself**, then stomp him while he's
+there. Waiting works and takes about twenty seconds; making your own
+openings takes ten.
 
 His dazed head sits under a **tapped** jump, not a held one. Held, he
 was unkillable for anyone who doesn't know to hold the button — which

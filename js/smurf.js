@@ -51,7 +51,7 @@
      jump (66px), not a fully held one - held at 96px he was literally
      unkillable for anyone who taps the button. */
   var DIZZY_H = 58;
-  var CLEAR_WINGS = 80, BOSS_WINGS = 260;
+  var CLEAR_WINGS = 80, BOSS_WINGS = 100;
   var WAFFLE_PTS = 100, STOMP_PTS = 150, CLEAR_PTS = 500, BOSS_PTS = 2500;
 
   var st;
@@ -1225,11 +1225,33 @@
       }
     }
 
-    // contact
-    var head = BASE_Y - (G.state === 'dizzy' ? DIZZY_H : 168);
-    var halfW = G.state === 'dizzy' ? 62 : 46;
-    if (Math.abs(p.x - G.x) < pw() / 2 + halfW && p.y > head && p.y - ph() < BASE_Y) {
-      if (G.state === 'dizzy' && p.vy > 40 && p.prevY <= head + 22) {
+    /* Contact. Measured from G.y rather than the floor, so the box
+       follows him while he is in the air on a slam. */
+    var dizzyNow = G.state === 'dizzy';
+    var head = G.y - (dizzyNow ? DIZZY_H : 168);
+    var halfW = dizzyNow ? 62 : 46;
+    var onHead = p.vy > 0 && p.prevY <= head + 22;
+
+    if (Math.abs(p.x - G.x) < pw() / 2 + halfW && p.y > head && p.y - ph() < G.y) {
+      /* Landing on his head while he is still up drops him. The
+         bouncy toadstool in the middle of the arena throws you high
+         enough to do it, so there is a way to make an opening instead
+         of only ever waiting for him to make one. */
+      if (!dizzyNow && onHead && G.hurt <= 0) {
+        G.state = 'dizzy';
+        G.t = 0;
+        G.air = false;
+        st.puddles.length = 0;
+        st.shots.length = 0;
+        bounce(p, STOMP_V + 40);
+        st.score += 250;
+        say('STUNNED', '#4dd47a');
+        SG.audio.play('smash');
+        SG.shake(10);
+        SG.burst(G.x, head, 16, { colors: ['#fff2b0', '#b46ad0'], speedMax: 240 });
+        return;
+      }
+      if (dizzyNow && p.vy > 40 && p.prevY <= head + 22) {
         G.hp--;
         // Harmless while he reels. Without this the bounce off his head
         // leaves the player inside a walking Gargamel on the very next
@@ -1244,7 +1266,7 @@
         SG.burst(G.x, head, 18, { colors: ['#b46ad0', '#fff2b0', '#4dd47a'], speedMax: 280 });
         if (G.hp <= 0) winGame();
         else say(G.hp === 2 ? 'TWO MORE' : 'ONE MORE', '#4dd47a');
-      } else if (G.state !== 'dizzy' && G.hurt <= 0) {
+      } else if (!dizzyNow && G.hurt <= 0) {
         hurt();
       }
     }
@@ -2750,7 +2772,7 @@
   /* The waffles-to-wings exchange, shown wherever a level ends. Counts
      up rather than just stating the total, because watching it tick is
      the reward for having gone and got them. */
-  function exchange(g, cx, y) {
+  function exchange(g, cx, y, compact) {
     var k = SG.clamp((st.endT - 0.5) * 1.6, 0, 1);
     var shown = Math.round(st.cashed * k);
     var wings = shown * WAFFLE_WINGS;
@@ -2772,9 +2794,11 @@
       size: 22, color: SG.COLORS.gold, align: 'left', shadow: false,
     });
 
-    SG.ui.text(g, 'waffles traded for chicken wings', cx, y + 30, {
-      size: 12, color: 'rgba(255,255,255,0.4)', shadow: false,
-    });
+    if (!compact) {
+      SG.ui.text(g, 'waffles traded for chicken wings', cx, y + 30, {
+        size: 12, color: 'rgba(255,255,255,0.4)', shadow: false,
+      });
+    }
   }
 
   function drawClear(g) {
@@ -2828,12 +2852,16 @@
     SG.ui.text(g, 'The village is smurfed. Or unsmurfed. One of the two.', CX, 184, {
       size: 13, color: 'rgba(255,255,255,0.55)', shadow: false,
     });
-    SG.ui.text(g, String(st.score), CX, 230, { size: 38, color: '#fff', shadow: false });
-    SG.ui.text(g, 'BEST  ' + SG.save.best('smurf'), CX, 262, { size: 13, color: 'rgba(255,255,255,0.4)', shadow: false });
-    exchange(g, CX, 296);
-    SG.ui.text(g, st.waffleTotal + ' waffles this run  ·  ' + st.wings + ' wings banked', CX, 326, {
-      size: 12, color: 'rgba(255,255,255,0.45)', shadow: false,
+    SG.ui.text(g, String(st.score), CX, 218, { size: 36, color: '#fff', shadow: false });
+    SG.ui.text(g, 'BEST  ' + SG.save.best('smurf'), CX, 246, { size: 13, color: 'rgba(255,255,255,0.4)', shadow: false });
+
+    // The bounty was always paid; it was just never shown, and the lair
+    // has barely any waffles, so the panel read as "you got nothing".
+    SG.art.drawWing(g, CX - 104, 280, 1.25, -0.3);
+    SG.ui.text(g, '+' + BOSS_WINGS + ' for Gargamel', CX - 82, 277, {
+      size: 19, color: SG.COLORS.gold, align: 'left', shadow: false,
     });
+    exchange(g, CX, 314, true);
 
     if (SG.ui.button(g, { x: CX - 190, y: 342, w: 180, h: 54 }, 'PLAY AGAIN', { color: SG.COLORS.gold, size: 16 })) reset(0, 0);
     if (SG.ui.button(g, { x: CX + 10, y: 342, w: 180, h: 54 }, 'MENU', { color: '#3a4270', text: '#fff' })) SG.go('menu');
