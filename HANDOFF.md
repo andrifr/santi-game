@@ -56,7 +56,7 @@ confirm before anything outward-facing that isn't a normal deploy.
 
 ### Deploy checklist
 
-- Bump **every** `?v=` in `index.html` (currently **64**). Forgetting
+- Bump **every** `?v=` in `index.html` (currently **65**). Forgetting
   this means testing a file that isn't running — it has bitten twice,
   including once mid-session when the browser served a cached `engine.js`
   without a function I'd just added.
@@ -131,6 +131,15 @@ auto-aimed at the nearest, no arming step. Wing Storm (ring of 12
 wings), The Lean (dash through with afterimages), Noir Shot (pierces the
 arena, heals per hit). The Super is printed on the draft card.
 
+The thumb sticks are Brawl Stars style: **always on screen** at a
+resting spot (blue bottom-left for movement, red with a target
+bottom-right for shooting), they **jump to wherever the thumb lands**
+with no easing, and drift home over ~0.3s when it lifts. Translucent at
+rest (alpha 0.52), opaque in use (0.95). Hidden entirely unless
+`SG.platform.touch`, and hidden once a mouse has been pressed —
+`sawMouse` lives at module scope, not in `st`, because `st` is rebuilt
+between rounds and a mouse is a fact about the device.
+
 **Smurf World** — Santi in a smurf cap, four levels built from
 hand-made chunks. Waffles are the collectible, traded for chicken wings
 at 5:1 whenever a level ends. Bricks you headbutt, `?` boxes with three
@@ -149,41 +158,33 @@ Santi complaining about her. The speaker is flavour-only, not a job.
 
 ---
 
-## Next up — Brawl joysticks, requested and not yet built
+## Brawl joysticks — built, and the constraints that shaped them
 
-Make the two sticks work and look like Brawl Stars'. All of it lives in
-`drawSticks()` (`js/brawl.js`, ~line 941) and `readControls()`.
+Done. `stickHome()` / `updateSticks()` / `stepStick()` / `drawStick()`
+in `js/brawl.js`. `readControls()` was left alone apart from the
+`sawMouse` flag — the origin was already taken from `p.sx, p.sy`, so
+"jumps to your finger" only ever needed a resting state to return to.
 
-**Wanted:**
+The layout numbers are load-bearing, and all of them were measured
+rather than eyeballed:
 
-- **Always visible**, not only while a finger is down. They currently
-  render only when `st.moveStick` / `st.aim` exist, which is to say only
-  mid-press, so a new player sees no controls at all.
-- **The stick jumps to the finger.** Press anywhere in that half and the
-  stick re-homes there rather than making you find it. When nothing is
-  pressed it sits back at its resting spot.
-- **Left stick blue** (movement), **right stick red with a target in the
-  middle** (shooting).
-- **Translucent when idle, opaque the moment it is being used.**
+- Homes are `(150, SG.H - 126)` and `(SG.W - 300, SG.H - 126)`,
+  **anchored to their edges** like the super button (`SG.W - 168`) and
+  the HUD panel (`x: 16`), not to the centre. A thumb reaches for a
+  corner, so an edge anchor is right even though it puts the left stick
+  outside the middle-960 safe band at `SG.W = 1400`.
+- With a base radius of 70 that leaves **62px between the aim stick and
+  the super button** and **56px above the bottom edge** — clear of the
+  iPhone home-indicator strip. Both hold at every width, because
+  `stickHome()` reads `SG.W` fresh every frame.
+- **The origin must not be eased while held.** Smoothing it makes the
+  aim lag the finger. Only the *release* animates.
 
-**What is already true**, so don't redo it: the origin is taken from
-`p.sx, p.sy` — where the finger landed — so the "jumps to your finger"
-half is effectively there already for a press. What is missing is the
-resting state when *no* finger is down, the re-home animation, the
-colours and the two opacity levels.
+Still true and still deliberate:
 
-**Traps waiting for whoever picks this up:**
-
-- The super button is bottom-right at `superRect()` — 148×148 in the
-  corner. The aim stick's resting home must not sit underneath it or the
-  two overlap. The pause button is top-right.
-- A pointer starting inside `superRect()` is deliberately excluded from
-  aiming. Keep that when you move things around.
-- Gate the whole thing on `SG.platform.touch` — desktop aims with the
-  mouse and moves with WASD, and drawing thumb sticks there is noise.
-  Smurf World's pad uses exactly this pattern.
-- The aim stick is drawn only when `!a.mouse`, which is correct: a mouse
-  is an aim but never a thumb stick.
+- A pointer starting inside `superRect()` is excluded from aiming.
+- The aim stick ignores `a.mouse` — a mouse is an aim, never a thumb
+  stick.
 
 ---
 

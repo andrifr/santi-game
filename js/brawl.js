@@ -19,6 +19,7 @@
   var HIT_R = 40;
 
   var STICK_R = 62, DEAD = 14;
+  var sawMouse = false;           // set by readControls; see the thumb sticks
   var MAX_AMMO = 3;
   var RELOAD = 0.95;              // per shell
   var REGEN_DELAY = 3.0;          // quiet seconds before healing starts
@@ -97,6 +98,7 @@
       cam: { x: ARENA_W / 2, y: ARENA_H / 2 },
       t: 0, msg: null, msgT: 0,
       moveStick: null, aim: null,
+      sticks: null,
       shake: 0,
       wings: keep ? keep.wings : 0,
       paused: false,
@@ -200,6 +202,7 @@
     if (me.superFx > 0) me.superFx -= dt;
     if (me.dash) updateDash(dt);       // dashing overrides steering
     readControls(dt);
+    updateSticks(dt);
     updateBots(dt);
     updateShots(dt);
     for (var bi = st.beams.length - 1; bi >= 0; bi--) {
@@ -244,8 +247,13 @@
       var p = SG.input.pointers[id];
       // A thumb that landed on the super button is not an aim.
       if (inRect(p.sx, p.sy, sr)) continue;
-      if (p.type === 'mouse') { if (!aimP) aimP = p; }
-      else if (p.sx < SG.W / 2) { if (!mvP) mvP = p; }
+      // A touchscreen laptop is still a mouse player. Remembering which
+      // one last touched the screen keeps the thumb sticks off it. It
+      // lives outside st because a mouse is a fact about the device, and
+      // st is rebuilt between rounds.
+      if (p.type === 'mouse') { sawMouse = true; if (!aimP) aimP = p; continue; }
+      sawMouse = false;
+      if (p.sx < SG.W / 2) { if (!mvP) mvP = p; }
       else if (!aimP) aimP = p;
     }
 
@@ -642,7 +650,7 @@
     g.restore();
 
     drawHUD(g);
-    drawSticks(g);
+    if (SG.platform.touch && !sawMouse && st.phase === 'fight' && !st.paused) drawSticks(g);
     if (st.phase === 'fight') drawSuperButton(g);
 
     if (st.paused) drawPaused(g);
@@ -938,30 +946,107 @@
     g.restore();
   }
 
+  /* Thumb sticks, the way Brawl Stars does them.
+
+     They are on screen from the first frame: drawing them only while a
+     finger was down meant a new player saw no controls at all. They jump
+     to wherever the thumb lands rather than making you find them, and
+     drift back to their resting spot when it lifts. Blue moves, red
+     shoots. Translucent idle, opaque in use. */
+  var STICK_SKIN = {
+    move: { rim: 'rgba(74,168,255,0.95)', hi: '#7cc2ff', lo: '#1f6fd8' },
+    aim: { rim: 'rgba(240,62,72,0.95)', hi: '#ff6b74', lo: '#b8141f' },
+  };
+
+  // Read fresh every frame - SG.W moves with the viewport, and the aim
+  // stick has to stay clear of the super button in the corner.
+  function stickHome(which) {
+    return which === 'move'
+      ? { x: 150, y: SG.H - 126 }
+      : { x: SG.W - 300, y: SG.H - 126 };
+  }
+
+  function updateSticks(dt) {
+    if (!st.sticks) st.sticks = { move: null, aim: null };
+    st.sticks.move = stepStick(st.sticks.move, stickHome('move'), st.moveStick, dt);
+    st.sticks.aim = stepStick(st.sticks.aim, stickHome('aim'),
+      st.aim && !st.aim.mouse ? st.aim : null, dt);
+  }
+
+  /* Held: the stick is exactly where the thumb is, with no easing at
+     all - smoothing the origin would make the aim lag the finger.
+     Released: the knob falls back to the middle and the whole stick
+     drifts home. */
+  function stepStick(s, home, live, dt) {
+    if (!s) s = { ox: home.x, oy: home.y, dx: 0, dy: 0, live: 0 };
+    if (live) {
+      var k = live.mag > STICK_R ? STICK_R / live.mag : 1;
+      s.ox = live.ox; s.oy = live.oy;
+      s.dx = live.dx * k; s.dy = live.dy * k;
+      s.live += (1 - s.live) * Math.min(1, dt * 20);
+    } else {
+      var e = Math.min(1, dt * 13);
+      s.ox += (home.x - s.ox) * e;
+      s.oy += (home.y - s.oy) * e;
+      s.dx -= s.dx * e;
+      s.dy -= s.dy * e;
+      s.live -= s.live * Math.min(1, dt * 8);
+    }
+    return s;
+  }
+
   function drawSticks(g) {
-    var s = st.moveStick;
-    if (s) {
-      g.save();
-      g.globalAlpha = 0.4;
-      g.strokeStyle = '#fff';
-      g.lineWidth = 4;
-      g.beginPath(); g.arc(s.ox, s.oy, STICK_R, 0, Math.PI * 2); g.stroke();
-      g.fillStyle = 'rgba(255,255,255,0.5)';
-      g.beginPath(); g.arc(s.ox + s.dx, s.oy + s.dy, 26, 0, Math.PI * 2); g.fill();
-      g.restore();
+    if (!st.sticks) return;
+    drawStick(g, st.sticks.move, STICK_SKIN.move, false);
+    drawStick(g, st.sticks.aim, STICK_SKIN.aim, true);
+  }
+
+  function drawStick(g, s, skin, target) {
+    if (!s) return;
+    var kx = s.ox + s.dx, ky = s.oy + s.dy;
+    var base = STICK_R + 8;
+
+    g.save();
+    // Idle is low enough to stay out of the way but not so low that a
+    // new player misses them against the green.
+    g.globalAlpha = 0.52 + s.live * 0.43;
+
+    g.fillStyle = 'rgba(8,10,24,0.62)';
+    g.beginPath(); g.arc(s.ox, s.oy, base, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = skin.rim;
+    g.lineWidth = 4;
+    g.beginPath(); g.arc(s.ox, s.oy, base - 2, 0, Math.PI * 2); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,0.12)';
+    g.lineWidth = 2;
+    g.beginPath(); g.arc(s.ox, s.oy, base - 13, 0, Math.PI * 2); g.stroke();
+
+    g.fillStyle = 'rgba(0,0,0,0.3)';
+    g.beginPath(); g.arc(kx, ky + 4, 28, 0, Math.PI * 2); g.fill();
+
+    var grad = g.createLinearGradient(kx, ky - 28, kx, ky + 28);
+    grad.addColorStop(0, skin.hi);
+    grad.addColorStop(1, skin.lo);
+    g.fillStyle = grad;
+    g.beginPath(); g.arc(kx, ky, 28, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,0.85)';
+    g.lineWidth = 3;
+    g.beginPath(); g.arc(kx, ky, 28, 0, Math.PI * 2); g.stroke();
+
+    if (target) {
+      g.strokeStyle = 'rgba(255,255,255,0.95)';
+      g.lineWidth = 2.6;
+      g.beginPath(); g.arc(kx, ky, 9, 0, Math.PI * 2); g.stroke();
+      g.beginPath();
+      g.moveTo(kx - 19, ky); g.lineTo(kx - 13, ky);
+      g.moveTo(kx + 13, ky); g.lineTo(kx + 19, ky);
+      g.moveTo(kx, ky - 19); g.lineTo(kx, ky - 13);
+      g.moveTo(kx, ky + 13); g.lineTo(kx, ky + 19);
+      g.stroke();
+    } else {
+      g.fillStyle = 'rgba(255,255,255,0.9)';
+      g.beginPath(); g.arc(kx, ky, 6, 0, Math.PI * 2); g.fill();
     }
-    var a = st.aim;
-    if (a && !a.mouse) {
-      g.save();
-      g.globalAlpha = 0.4;
-      g.strokeStyle = SG.COLORS.gold;
-      g.lineWidth = 4;
-      g.beginPath(); g.arc(a.ox, a.oy, STICK_R, 0, Math.PI * 2); g.stroke();
-      var k = a.mag > STICK_R ? STICK_R / a.mag : 1;
-      g.fillStyle = 'rgba(255,176,46,0.6)';
-      g.beginPath(); g.arc(a.ox + a.dx * k, a.oy + a.dy * k, 26, 0, Math.PI * 2); g.fill();
-      g.restore();
-    }
+    g.restore();
   }
 
   function drawHUD(g) {
