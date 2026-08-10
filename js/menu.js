@@ -30,6 +30,7 @@
   var scene = {
     enter: function () {
       t = 0;
+      dev.open = false;          // don't come back from a game into a modal
       clouds = [];
       for (var i = 0; i < 7; i++) {
         clouds.push({ x: Math.random() * SG.W, y: SG.rand(30, 170), s: SG.rand(0.5, 1.3), v: SG.rand(4, 14) });
@@ -56,6 +57,14 @@
     },
 
     draw: function (g) {
+      /* While the test panel is open it owns every tap. Taps are held
+         back rather than the menu being drawn differently, so the cards
+         and the sound button resolve against an empty list and nothing
+         behind the panel can fire. Same array throughout - the engine
+         clears `taps` by length, so swapping it for a new one would
+         leave the engine holding the wrong reference. */
+      var heldTaps = dev.open ? SG.input.taps.splice(0) : null;
+
       drawBackdrop(g);
 
       // ---- title ----
@@ -101,8 +110,140 @@
         SG.art.drawWing(g, 32, SG.H - 52, 0.75, -0.3);
         SG.ui.text(g, String(totalWings), 50, SG.H - 52, { size: 15, color: SG.COLORS.gold, align: 'left', shadow: false });
       }
+
+      if (DEV) {
+        if (heldTaps) Array.prototype.push.apply(SG.input.taps, heldTaps);
+        drawDevTools(g);
+      }
     },
   };
+
+  /* =============================================================
+     TEST TOOLS - temporary. Flip DEV to false (or delete this block,
+     the `dev` state, the DEV call in draw() and the heldTaps lines) to
+     take it out. Nothing else depends on it.
+     ============================================================= */
+  var DEV = true;
+  var dev = { open: false, note: '', noteT: 0 };
+
+  // Wing counts worth jumping to, given the current ladder.
+  var DEV_PRESETS = [
+    { label: '0', wings: 0 },
+    { label: '5,900', wings: 5900 },       // one tick short of the bigger present
+    { label: '8,900', wings: 8900 },       // one tick short of Daley
+    { label: '9,000', wings: 9000 },       // fires the raid
+    { label: '20,000', wings: 20000 },     // everything, pre-raid ladder
+  ];
+
+  // Wings, collected presents and Daley all back to a known state.
+  function devSet(wings) {
+    SG.save.data.wings = Math.max(0, Math.round(wings) || 0);
+    SG.save.data.presentsSeen = 0;      // so the unlock reveals replay
+    SG.save.data.raid = false;          // re-arm the cutscene
+    SG.save.data.raidWon = 0;
+    SG.save.data.econ2 = true;          // don't let the migration double it
+    SG.save.write();
+    devSay(SG.save.data.wings + ' wings, presents cleared');
+  }
+
+  function devSay(msg) { dev.note = msg; dev.noteT = 2.6; }
+
+  function drawDevTools(g) {
+    var CX = SG.W / 2;
+
+    if (dev.noteT > 0) dev.noteT -= 1 / 60;
+
+    if (!dev.open) {
+      /* Below y=70, not tucked into the corner: #fsBtn is a fixed DOM
+         overlay on the top right and covers roughly the first 66
+         virtual pixels on the smallest phone this runs on. */
+      if (SG.ui.button(g, { x: SG.W - 118, y: 76, w: 96, h: 32 }, 'TEST', {
+        color: '#33384f', text: 'rgba(255,255,255,0.7)', size: 13, r: 10,
+      })) dev.open = true;
+      return;
+    }
+
+    g.fillStyle = 'rgba(4,5,14,0.72)';
+    g.fillRect(0, 0, SG.W, SG.H);
+
+    SG.ui.panel(g, CX - 310, 112, 620, 268, {
+      r: 18, fill: 'rgba(12,14,32,0.97)', border: '#5a6288', borderWidth: 2.5,
+    });
+
+    SG.ui.text(g, 'TEST TOOLS', CX, 142, { size: 20, color: '#fff', shadow: false });
+
+    var raided = !!SG.save.data.raid;
+    SG.ui.text(g,
+      fmtN(SG.save.data.wings || 0) + ' wings   ·   ' + SG.presents.count() + '/' +
+      SG.presents.total + ' presents   ·   Daley: ' + (raided ? 'done' : 'pending'),
+      CX, 168, { size: 13, color: 'rgba(255,255,255,0.6)', shadow: false });
+
+    SG.ui.text(g, 'SET WINGS TO', CX, 196, { size: 12, color: SG.COLORS.gold, shadow: false });
+
+    var bw = 108, gap = 10;
+    var total = DEV_PRESETS.length * bw + (DEV_PRESETS.length - 1) * gap;
+    for (var i = 0; i < DEV_PRESETS.length; i++) {
+      var p = DEV_PRESETS[i];
+      var r = { x: CX - total / 2 + i * (bw + gap), y: 210, w: bw, h: 38 };
+      if (SG.ui.button(g, r, p.label, { color: '#3a4270', text: '#fff', size: 14, r: 10 })) devSet(p.wings);
+    }
+
+    if (SG.ui.button(g, { x: CX - 310 + 24, y: 264, w: 186, h: 40 }, 'TYPE A NUMBER', {
+      color: SG.COLORS.gold, size: 14, r: 10,
+    })) {
+      var answer = window.prompt('Set chicken wings to:', String(SG.save.data.wings || 0));
+      if (answer !== null) {
+        var n = parseInt(String(answer).replace(/[^0-9-]/g, ''), 10);
+        if (isNaN(n)) devSay('not a number');
+        else devSet(n);
+      }
+      SG.input.releaseAll();     // the dialog swallows the release
+    }
+
+    if (SG.ui.button(g, { x: CX - 93, y: 264, w: 186, h: 40 }, 'AFTER THE RAID', {
+      color: '#a077ff', text: '#17120a', size: 14, r: 10,
+    })) {
+      // Straight to the re-based ladder, without sitting through her.
+      SG.save.data.wings = 0;
+      SG.save.data.raid = true;
+      SG.save.data.raidWon = 6;
+      SG.save.data.presentsSeen = 6;
+      SG.save.data.econ2 = true;
+      SG.save.write();
+      devSay('post-raid: 6 kept, 4 re-priced');
+    }
+
+    if (SG.ui.button(g, { x: CX + 310 - 24 - 186, y: 264, w: 186, h: 40 }, 'WIPE SAVE', {
+      color: '#8a2540', text: '#fff', size: 14, r: 10,
+    })) {
+      try { localStorage.removeItem('santigame.v1'); } catch (e) {}
+      SG.save.data.wings = 0;
+      SG.save.data.best = {};
+      SG.save.data.presentsSeen = 0;
+      SG.save.data.raid = false;
+      SG.save.data.raidWon = 0;
+      SG.save.data.econ2 = true;
+      SG.save.write();
+      devSay('save wiped, high scores too');
+    }
+
+    if (dev.noteT > 0) {
+      SG.ui.text(g, dev.note, CX, 322, { size: 13, color: SG.COLORS.green, shadow: false });
+    } else {
+      SG.ui.text(g, 'Presets clear collected presents and re-arm Daley.', CX, 322, {
+        size: 12, color: 'rgba(255,255,255,0.35)', shadow: false,
+      });
+    }
+
+    if (SG.ui.button(g, { x: CX - 90, y: 340, w: 180, h: 34 }, 'CLOSE', {
+      color: '#2a2f52', text: '#fff', size: 14, r: 10, sound: 'back',
+    })) dev.open = false;
+
+    // Anything else tapped while the panel is up is swallowed here.
+    SG.input.taps.length = 0;
+  }
+
+  function fmtN(n) { return String(Math.floor(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
 
   function drawBackdrop(g) {
     var sky = g.createLinearGradient(0, 0, 0, SG.H);
