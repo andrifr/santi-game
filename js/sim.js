@@ -372,6 +372,8 @@
       vy: 0,
       grounded: true,
       jumpHeld: false,         // so holding the pad doesn't auto-hop
+      eHeld: false,            // same, for the interact key
+      sawTouch: false,         // a finger has been on the glass
       flash: 0,
       rue: { x: 3660, y: 0, follow: false, phase: 0 },
     };
@@ -592,6 +594,24 @@
     // keydown and swallows auto-repeat, so this is edge-triggered.
     if (SG.input.takeSwipe('up')) doJump();
 
+    /* E interacts with whatever is in reach - the same useObject() a
+       click goes through, so clicking still works exactly as it did.
+       `keys` stays true for as long as the key is down, so compare
+       against last frame or one press runs every frame. */
+    var eDown = !!SG.input.keys.KeyE;
+    if (eDown && !st.eHeld) {
+      var near = reachObject();
+      if (near) useObject(near);
+    }
+    st.eHeld = eDown;
+
+    // The E prompt is meaningless on a phone, where you tap the thing.
+    if (!st.sawTouch) {
+      for (var pid in SG.input.pointers) {
+        if (SG.input.pointers[pid].type === 'touch') { st.sawTouch = true; break; }
+      }
+    }
+
     var rc = controlRects();
     var padJump = heldIn(rc.jump);
     if (padJump && !st.jumpHeld) doJump();
@@ -680,6 +700,28 @@
       if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return true;
     }
     return false;
+  }
+
+  function inReach(o) { return Math.abs(o.x - st.x) <= REACH + o.w / 2; }
+
+  /* What E would act on: the task's own target if he is standing at it,
+     otherwise the nearest thing in reach. Preferring the target means E
+     always moves the day along when it can, rather than poking the lamp
+     that happens to be a few pixels nearer. */
+  function reachObject() {
+    var tk = task();
+    if (tk) {
+      var t = obj(tk.target);
+      if (t && inReach(t)) return t;
+    }
+    var best = null, bestD = 1e9;
+    for (var i = 0; i < st.objects.length; i++) {
+      var o = st.objects[i];
+      if (!inReach(o)) continue;
+      var d = Math.abs(o.x - st.x);
+      if (d < bestD) { bestD = d; best = o; }
+    }
+    return best;
   }
 
   function doJump() {
@@ -866,12 +908,60 @@
 
     drawGuide(g, cam);
     drawHUD(g);
-    if (!st.done && !st.paused && !st.overlay) drawControls(g);
+    if (!st.done && !st.paused && !st.overlay) {
+      drawControls(g);
+      drawInteractPrompt(g, cam);
+    }
 
     if (st.bubble) drawBubble(g, cam);
     if (st.overlay) drawOverlay(g);
     if (st.paused) drawPaused(g);
     if (st.done) drawDone(g);
+  }
+
+  /* Fixed to the screen rather than floating over him. When he is in
+     reach of a thing he is standing *at* it, which is exactly where the
+     task guide already puts its arrow and its label - a prompt over his
+     head landed on top of both. Down here it never collides, and it is
+     in the same place every time. */
+  function drawInteractPrompt(g, cam) {
+    if (st.sawTouch) return;
+    var o = reachObject();
+    if (!o) return;
+
+    var label = 'INTERACT';
+    g.font = '900 14px ' + SG.FONT;
+    var tw = g.measureText(label).width;
+    g.font = '900 11px ' + SG.FONT;
+    var sw = g.measureText(o.label).width + 10;
+
+    var r = 15;
+    var w = 12 + r * 2 + 9 + tw + 8 + sw + 14;
+    var h = 40;
+    var x = SG.W / 2 - w / 2;
+    var y = SG.H - 112;
+
+    SG.ui.panel(g, x, y, w, h, {
+      r: 20, fill: 'rgba(10,12,26,0.86)', border: '#ffd400', borderWidth: 2.5,
+    });
+
+    var kx = x + 12 + r, ky = y + h / 2;
+    g.fillStyle = '#ffd400';
+    g.beginPath();
+    g.arc(kx, ky, r, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = '#1a1030';
+    g.lineWidth = 2;
+    g.stroke();
+    SG.ui.text(g, 'E', kx, ky + 1, { size: 16, color: '#1a1030', shadow: false });
+
+    SG.ui.text(g, label, kx + r + 9, ky + 1, {
+      size: 14, color: '#fff', align: 'left', shadow: false,
+    });
+    // Name it: "interact" alone is ambiguous in a room full of things.
+    SG.ui.text(g, '· ' + o.label, kx + r + 9 + tw + 8, ky + 1, {
+      size: 11, color: 'rgba(255,214,80,0.8)', align: 'left', shadow: false,
+    });
   }
 
   function drawControls(g) {

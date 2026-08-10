@@ -293,7 +293,15 @@ with an edge marker pointing the way when the target is off screen.
 | ------ | ----- | ------- |
 | Walk | ◀ ▶ pads, bottom right | ← → / A D |
 | Jump | ▲ pad, bottom left | ↑ / W / Space |
-| Go somewhere | tap it | tap it |
+| Use the thing you're at | tap it | **E**, or click it |
+| Go somewhere | tap it | click it |
+
+Standing in reach of anything puts an **E · INTERACT** prompt at the
+bottom of the screen, naming what it would act on. E prefers the current
+task's target over whatever is nearest, so it always moves the day along
+when it can. It runs through the same code a click does, so clicking
+still works exactly as before. The prompt is hidden once a touch is seen
+— there is no E key on a phone.
 
 The pads sit well clear of the bottom edge — on an iPhone that strip is
 the home-indicator gesture area — and above the pause button. A press on
