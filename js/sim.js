@@ -568,6 +568,14 @@
     if (st.flash > 0) st.flash -= dt;
     if (st.mirrorScare > 0) st.mirrorScare -= dt;
 
+    /* E is edge-triggered, and has to be sampled up here rather than
+       down with the rest of the input: `keys` stays true while the key
+       is held, and every branch below returns early, so a press made
+       while an overlay is open would otherwise never be seen. */
+    var eDown = !!SG.input.keys.KeyE;
+    st.ePressed = eDown && !st.eHeld;
+    st.eHeld = eDown;
+
     // However the pause was set - the tap below, the pause menu, or
     // onBlur when the app is backgrounded - the music follows it.
     SG.audio.music.follow(st.paused);
@@ -611,16 +619,13 @@
     // keydown and swallows auto-repeat, so this is edge-triggered.
     if (SG.input.takeSwipe('up')) doJump();
 
-    /* E interacts with whatever is in reach - the same useObject() a
-       click goes through, so clicking still works exactly as it did.
-       `keys` stays true for as long as the key is down, so compare
-       against last frame or one press runs every frame. */
-    var eDown = !!SG.input.keys.KeyE;
-    if (eDown && !st.eHeld) {
+    /* E interacts with whatever is in reach, through the same
+       useObject() a click goes through - so clicking is untouched. */
+    if (st.ePressed) {
+      st.ePressed = false;
       var near = reachObject();
       if (near) useObject(near);
     }
-    st.eHeld = eDown;
 
     var rc = controlRects();
     var padJump = heldIn(rc.jump);
@@ -800,20 +805,31 @@
   // ---------------------------------------------------------------
   // Overlays - the little interactions
   // ---------------------------------------------------------------
+  /* Inside an overlay E does whatever a tap does: the key that opened
+     the microwave should be the key that takes the food out. Consumed
+     on read so one press cannot count twice. */
+  // "TAP" is a lie on a keyboard, and the overlays are full of it.
+  function act(word) { return (st.sawTouch ? 'TAP' : 'PRESS E') + ' TO ' + word; }
+
+  function overlayTap() {
+    if (st.ePressed) { st.ePressed = false; return true; }
+    return !!SG.input.takeTap();
+  }
+
   function updateOverlay(dt) {
     var o = st.ov;
     switch (st.overlay) {
       case 'nuke':
         o.t += dt;
         if (o.t >= o.dur && !o.done) { o.done = true; SG.audio.play('wingbig'); }
-        if (o.done && SG.input.takeTap()) {
+        if (o.done && overlayTap()) {
           say(SG.pick(['Warm. Melty. Correct.', 'Cash topit. Every single day.', 'That is the one.']));
           closeOverlay(true);
         }
         break;
 
       case 'spray':
-        if (SG.input.takeTap()) {
+        if (overlayTap()) {
           o.sprays++;
           st.hairLevel = o.sprays;
           SG.audio.play('slide');
@@ -827,7 +843,7 @@
         else if (o.stage === 1 && o.t > 2.4) { o.stage = 2; o.t = 0; SG.audio.play('power'); }
         else if (o.stage === 2) {
           o.views = Math.min(st.video.v, Math.floor(o.t * st.video.v * 0.72));
-          if (o.t > 1.8 && SG.input.takeTap()) {
+          if (o.t > 1.8 && overlayTap()) {
             st.videoMade = true;
             say(SG.pick(['Uploaded. Lap if it flops.', 'That is going off.', 'Thumbnail took longer than the video.']));
             closeOverlay(true);
@@ -839,14 +855,14 @@
       case 'game':
         o.t += dt;
         if (o.stage === 0 && o.t > 1.6) { o.stage = 1; o.t = 0; SG.audio.play('crash'); }
-        else if (o.stage === 1 && o.t > 0.6 && SG.input.takeTap()) {
+        else if (o.stage === 1 && o.t > 0.6 && overlayTap()) {
           say(SG.pick(['One more. Definitely the last one.', 'Lap. Third place.', 'That was lag. Genuinely.']));
           closeOverlay(true);
         }
         break;
 
       case 'guitar':
-        if (SG.input.takeTap()) {
+        if (overlayTap()) {
           o.strums++;
           SG.audio.play(['point', 'wing', 'pop'][o.strums % 3]);
           if (o.strums >= 3) {
@@ -862,7 +878,7 @@
         break;
 
       case 'wings':
-        if (SG.input.takeTap()) {
+        if (overlayTap()) {
           o.eaten++;
           st.wingsLeft = Math.max(0, 5 - o.eaten);
           SG.audio.play('wing');
@@ -872,7 +888,7 @@
 
       case 'call':
         o.t += dt;
-        if (SG.input.takeTap()) {
+        if (overlayTap()) {
           o.line++;
           SG.audio.play('tap');
           if (o.line >= CALL_LINES.length) { say('She hung up first. Respect.'); closeOverlay(true); }
@@ -885,7 +901,7 @@
         if (o.stage === 0) {
           if (o.t > 1.5) { o.stage = 1; o.t = 0; o.line = 0; SG.audio.play('back'); SG.shake(6); }
         } else if (o.stage === 1) {
-          if (SG.input.takeTap()) {
+          if (overlayTap()) {
             o.line++;
             if (o.line === st.night.lines.length - 1) SG.audio.play('lap');
             else SG.audio.play('tap');
@@ -1712,7 +1728,7 @@
         }
         g.lineTo(CX + 44, 300); g.lineTo(CX - 44, 300);
         g.closePath(); g.fill();
-        SG.ui.text(g, o.done ? 'TAP TO TAKE IT OUT' : 'HEATING...', CX, 344, {
+        SG.ui.text(g, o.done ? act('TAKE IT OUT') : 'HEATING...', CX, 344, {
           size: 14, color: o.done ? '#4dd47a' : 'rgba(255,255,255,0.6)', shadow: false,
         });
         break;
@@ -1728,7 +1744,7 @@
           g.ellipse(CX, 190 - s * 15, 58 - s * 10, 16, 0, 0, Math.PI * 2);
           g.fill();
         }
-        SG.ui.text(g, 'TAP TO SPRAY   ' + o.sprays + ' / 3', CX, 372, {
+        SG.ui.text(g, act('SPRAY') + '   ' + o.sprays + ' / 3', CX, 372, {
           size: 16, color: '#fff', shadow: false,
         });
         break;
@@ -1778,7 +1794,7 @@
           SG.ui.text(g, o.views.toLocaleString(), CX, 250, { size: 46, color: '#fff', shadow: false });
           SG.ui.text(g, 'VIEWS', CX, 286, { size: 13, color: 'rgba(255,255,255,0.45)', shadow: false });
           if (o.t > 1.8) {
-            SG.ui.text(g, 'TAP TO UPLOAD', CX, 356, { size: 16, color: '#4dd47a', shadow: false });
+            SG.ui.text(g, act('UPLOAD'), CX, 356, { size: 16, color: '#4dd47a', shadow: false });
           }
         }
         break;
@@ -1802,7 +1818,7 @@
         } else {
           SG.ui.text(g, '3rd', CX, 236, { size: 46, color: '#ff5a4a', shadow: false });
           SG.ui.text(g, 'THAT WAS LAG', CX, 284, { size: 15, color: 'rgba(255,255,255,0.6)', shadow: false });
-          SG.ui.text(g, 'TAP TO STOP AT ONE', CX, 352, { size: 14, color: '#4dd47a', shadow: false });
+          SG.ui.text(g, act('STOP AT ONE'), CX, 352, { size: 14, color: '#4dd47a', shadow: false });
         }
         break;
       }
@@ -1832,7 +1848,7 @@
           g.stroke();
         }
         g.restore();
-        SG.ui.text(g, 'TAP TO STRUM   ' + o.strums + ' / 3', CX, 356, { size: 16, color: '#fff', shadow: false });
+        SG.ui.text(g, act('STRUM') + '   ' + o.strums + ' / 3', CX, 356, { size: 16, color: '#fff', shadow: false });
         break;
       }
 
@@ -1844,7 +1860,7 @@
           SG.art.drawWing(g, CX - 96 + w2 * 48, 250, 1.8, -0.3 + w2 * 0.5);
         }
         if (left === 0) SG.ui.text(g, 'GONE.', CX, 250, { size: 30, color: '#4dd47a', shadow: false });
-        SG.ui.text(g, 'TAP TO EAT   ' + o.eaten + ' / 5', CX, 344, { size: 16, color: '#fff', shadow: false });
+        SG.ui.text(g, act('EAT') + '   ' + o.eaten + ' / 5', CX, 344, { size: 16, color: '#fff', shadow: false });
         break;
       }
 
@@ -1867,7 +1883,7 @@
           size: 17, color: '#fff', weight: '700',
           font: '"Avenir Next", system-ui, sans-serif', shadow: false,
         });
-        SG.ui.text(g, 'TAP TO CONTINUE', CX, 372, { size: 12, color: 'rgba(255,255,255,0.4)', shadow: false });
+        SG.ui.text(g, act('CONTINUE'), CX, 372, { size: 12, color: 'rgba(255,255,255,0.4)', shadow: false });
         break;
       }
 
@@ -1895,7 +1911,7 @@
             size: 18, color: '#fff', weight: '700',
             font: '"Avenir Next", system-ui, sans-serif', shadow: false,
           });
-          SG.ui.text(g, 'TAP TO CONTINUE', CX, 378, { size: 12, color: 'rgba(255,255,255,0.4)', shadow: false });
+          SG.ui.text(g, act('CONTINUE'), CX, 378, { size: 12, color: 'rgba(255,255,255,0.4)', shadow: false });
         } else {
           g.fillStyle = '#000';
           g.fillRect(0, 0, SG.W, SG.H);

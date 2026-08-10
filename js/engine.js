@@ -1536,9 +1536,12 @@
     /* Chrome offers a real one-tap install, but only for a site that
        answers a navigation offline - which is what sw.js is for. The
        event has to be kept: prompt() can only be called once, and only
-       from inside a user gesture, so it cannot be called from here. */
-    window.addEventListener('beforeinstallprompt', function (e) {
-      e.preventDefault();
+       from inside a user gesture, so it cannot be called from here.
+
+       It can also arrive before this file has even run, which is why
+       index.html catches it in <head> and hands it over. Both routes
+       land here. */
+    function offerInstall(e) {
       deferred = e;
       if (platform.standalone || save.data.seenA2HS) return;
       textEl.innerHTML = 'Install it and it opens like an app - fullscreen, ' +
@@ -1546,7 +1549,13 @@
       installBtn.classList.remove('hidden');
       offer = true;
       sync();
+    }
+    SG.onInstallPrompt = offerInstall;
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      offerInstall(e);
     });
+    if (window.__installPrompt) offerInstall(window.__installPrompt);
 
     installBtn.addEventListener('click', function () {
       if (!deferred) return;

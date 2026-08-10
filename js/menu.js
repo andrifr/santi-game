@@ -224,8 +224,9 @@
       SG.save.data.raid = false;
       SG.save.data.raidWon = 0;
       SG.save.data.econ2 = true;
+      SG.save.data.seenA2HS = false;   // so the install banner offers again
       SG.save.write();
-      devSay('save wiped, high scores too');
+      devSay('save wiped, high scores and install hint too');
     }
 
     if (dev.noteT > 0) {

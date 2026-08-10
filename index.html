@@ -16,7 +16,22 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
 <link rel="icon" href="assets/icons/icon-192.png">
-<link rel="stylesheet" href="css/style.css?v=97">
+<link rel="stylesheet" href="css/style.css?v=100">
+
+<script>
+/* Caught here, at the very top of the document, rather than in the
+   engine. beforeinstallprompt fires as soon as the browser has decided
+   the site is installable - which can be before the game's ten scripts
+   have finished parsing, and the timing differs between a local server
+   and Pages. Miss the event and it never comes again, so there is no
+   install button at all. The engine picks this up when it is ready. */
+window.__installPrompt = null;
+window.addEventListener('beforeinstallprompt', function (e) {
+  e.preventDefault();
+  window.__installPrompt = e;
+  if (window.SG && window.SG.onInstallPrompt) window.SG.onInstallPrompt(e);
+});
+</script>
 </head>
 <body>
 <div id="app">
@@ -47,15 +62,15 @@
 </div>
 
 <!-- Bump ?v= after editing so phones don't serve a stale cached copy. -->
-<script src="js/engine.js?v=97"></script>
-<script src="js/menu.js?v=97"></script>
-<script src="js/presents.js?v=97"></script>
-<script src="js/wingrun.js?v=97"></script>
-<script src="js/pickleball.js?v=97"></script>
-<script src="js/sim.js?v=97"></script>
-<script src="js/brawl.js?v=97"></script>
-<script src="js/smurf.js?v=97"></script>
-<script src="js/stubs.js?v=97"></script>
-<script src="js/main.js?v=97"></script>
+<script src="js/engine.js?v=100"></script>
+<script src="js/menu.js?v=100"></script>
+<script src="js/presents.js?v=100"></script>
+<script src="js/wingrun.js?v=100"></script>
+<script src="js/pickleball.js?v=100"></script>
+<script src="js/sim.js?v=100"></script>
+<script src="js/brawl.js?v=100"></script>
+<script src="js/smurf.js?v=100"></script>
+<script src="js/stubs.js?v=100"></script>
+<script src="js/main.js?v=100"></script>
 </body>
 </html>

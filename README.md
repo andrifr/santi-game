@@ -322,7 +322,10 @@ with an edge marker pointing the way when the target is off screen.
 
 Standing in reach of anything **makes it glow yellow** and puts an
 **E · INTERACT** prompt at the bottom of the screen naming it — or, on a
-phone, lights the **USE** pad beside the jump arrow. The glow is the
+phone, lights the **USE** pad beside the jump arrow. **E also works
+inside the little interactions** — the microwave, the video, the game,
+the guitar — so the key that opened one is the key that closes it, and
+each prompt says `PRESS E` or `TAP` depending on what you're playing on. The glow is the
 answer to "which one": the prompt names the object, but a room with a
 plant in front of a counter still leaves you guessing without it. E prefers the current
 task's target over whatever is nearest, so it always moves the day along
