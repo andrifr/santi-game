@@ -34,7 +34,7 @@
   var WARN_TIME = 2;           // flashing "about to run out" window
   var SAUCE_MULT = 1.35;
   var BLOCK = 42;              // brick / question box, square
-  var WAFFLE_WINGS = 5;        // what one waffle is worth in chicken wings
+  var WAFFLE_WINGS = 3;        // what one waffle is worth in chicken wings
 
   /* Rising under a held jump uses GRAV_HOLD, everything else GRAV.
      620^2 / (2*1450) = 132px held, 620^2 / (2*2900) = 66px tapped -
@@ -51,7 +51,7 @@
      jump (66px), not a fully held one - held at 96px he was literally
      unkillable for anyone who taps the button. */
   var DIZZY_H = 58;
-  var CLEAR_WINGS = 80, BOSS_WINGS = 100;
+  var CLEAR_WINGS = 50, BOSS_WINGS = 90;
   var WAFFLE_PTS = 100, STOMP_PTS = 150, CLEAR_PTS = 500, BOSS_PTS = 2500;
 
   var st;

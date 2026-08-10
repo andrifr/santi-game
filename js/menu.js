@@ -72,6 +72,8 @@
 
       SG.ui.text(g, 'CHOOSE YOUR MODE', SG.W / 2, 152, { size: 17, color: 'rgba(255,255,255,0.62)', shadow: false });
 
+      drawPresentTab(g);
+
       // ---- cards ----
       for (var i = 0; i < MODES.length; i++) {
         var appear = SG.clamp((t - i * 0.07) * 4.5, 0, 1);
@@ -226,6 +228,66 @@
     }
 
     g.restore();
+  }
+
+  /* The way in to the present ladder. Top left, not top right: the
+     fullscreen button is a DOM overlay pinned to the top right corner
+     with a higher z-index, so anything drawn under it is both hidden
+     and un-tappable. */
+  function drawPresentTab(g) {
+    var r = { x: 22, y: 20, w: 178, h: 82 };
+    var got = SG.presents.count();
+    var isNew = SG.presents.unseen() > 0;
+    var glow = isNew ? 14 + Math.sin(t * 5) * 8 : 8 + Math.sin(t * 2) * 4;
+
+    g.save();
+    g.shadowColor = isNew ? SG.COLORS.red : 'rgba(255,176,46,0.9)';
+    g.shadowBlur = glow;
+    SG.ui.panel(g, r.x, r.y, r.w, r.h, {
+      r: 18,
+      fill: 'rgba(12,14,32,0.9)',
+      border: isNew ? SG.COLORS.red : 'rgba(255,176,46,0.65)',
+      borderWidth: 2.5,
+    });
+    g.restore();
+
+    // Always the bright version - this is a signpost, not a status light.
+    SG.presents.draw(g, r.x + 40, r.y + 62, 0.95, { tier: 'grand', got: true, check: false });
+
+    SG.ui.text(g, 'PRESENTS', r.x + 74, r.y + 22, {
+      size: 14, color: SG.COLORS.gold, align: 'left', shadow: false,
+    });
+    SG.ui.text(g, got + ' / ' + SG.presents.total, r.x + 74, r.y + 44, {
+      size: 17, color: '#fff', align: 'left', shadow: false,
+    });
+
+    var bx = r.x + 74, bw = r.w - 90, by = r.y + 58, bh = 8;
+    g.fillStyle = 'rgba(255,255,255,0.12)';
+    SG.roundRect(g, bx, by, bw, bh, 4);
+    g.fill();
+    var fw = bw * SG.presents.frac();
+    if (fw > 2) {
+      var grd = g.createLinearGradient(bx, 0, bx + bw, 0);
+      grd.addColorStop(0, '#ff6b3d');
+      grd.addColorStop(1, '#ffe38a');
+      g.fillStyle = grd;
+      SG.roundRect(g, bx, by, fw, bh, 4);
+      g.fill();
+    }
+
+    if (isNew) {
+      var dr = 10 + Math.sin(t * 6) * 1.2;
+      g.fillStyle = SG.COLORS.red;
+      g.beginPath();
+      g.arc(r.x + r.w - 8, r.y + 8, dr, 0, Math.PI * 2);
+      g.fill();
+      SG.ui.text(g, '!', r.x + r.w - 8, r.y + 8, { size: 14, color: '#fff', shadow: false });
+    }
+
+    if (SG.input.tappedRect(r)) {
+      SG.audio.play('select');
+      SG.go('presents');
+    }
   }
 
   function drawIcon(g, id, x, y, color) {

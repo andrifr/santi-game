@@ -156,6 +156,50 @@ One `localStorage` key (`santigame.v1`). **Chicken wings are the shared
 currency** — every mode pays into `save.data.wings`. Bank them as they're
 earned, not at the end of a run.
 
+**Every mode pays at the same rate: ~130 wings per minute** for a
+competent player. Wing Run is the anchor — one collected wing is one
+banked wing, which is the whole fiction of the mode — and the others are
+scaled to meet it (`WINGS_PER_TASK`, `WINGS_PER_POINT`/
+`WINGS_MATCH_BONUS`/`EGG_WINGS`, `WAFFLE_WINGS`/`CLEAR_WINGS`/
+`BOSS_WINGS`, `roundWings()`). They were 2–2.5x apart before, and the
+mode that pays best is the only one anyone plays. **If you retune one,
+retune them all against the target** — and remember the present ladder
+is denominated in minutes, so changing a payout silently moves how long
+the grand prize takes.
+
+Changing the economy retroactively devalues what's already banked. The
+`econ2` flag in `save.load` is the one-time migration that doubled
+existing balances when the goals doubled; anything similar needs the
+same treatment, because those presents are real objects someone is
+already holding.
+
+**Daley's raid** (`js/presents.js`) fires once, at 9,000 wings, on the
+presents screen — never mid-run, where a cutscene would take the
+controls away during a fight. She eats the whole jar and the ladder
+re-bases: `raidWon` records how many presents were collected at that
+moment, those goals become 0 so they stay collected, and the rest are
+spread across `RAID_TOTAL`. Two invariants:
+
+- **A collected present can never become uncollected.** It's a real
+  object someone was handed. `raidWon` is counted while the pre-raid
+  ladder is still live, precisely so a player who arrives holding more
+  than the usual six doesn't lose one.
+- **Re-basing is not optional.** Leaving the goals untouched after the
+  wipe would mean 86 minutes of climbing with no present at all, which
+  is worse than not having the cutscene at all.
+
+`js/presents.js` spends that currency on ten **real, physical
+presents** — a milestone bar reached from the PRESENTS tab on the menu,
+with #5 the bigger present and #10 the grand prize. The thresholds are
+the `GOALS` array at the top of the file and nothing else hardcodes
+them; the bar, the labels, the cards and the menu tab all read that one
+list, and `SG.presents` exposes `count/frac/next/unseen/draw` for the
+tab. A second save key, `presentsSeen`, records how many have been
+celebrated, so the reveal animation and the tab's badge fire once each.
+The tab sits **top left**: `#fsBtn` is a DOM overlay pinned to the top
+right at a higher z-index, so anything drawn under it is invisible and
+un-tappable.
+
 Smurf World collects **waffles** and trades them for wings at 5:1. That
 exchange still counts as banking-as-you-earn because it runs whenever a
 level ends — cleared, died, restarted *or* quit to the menu — so putting

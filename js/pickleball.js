@@ -26,8 +26,8 @@
   var NEAR_Z = 0.9;          // where Santi stands
   var FAR_Z = COURT_LEN - 0.9;
   var REACH = 1.15;
-  var WINGS_PER_POINT = 100;
-  var WINGS_MATCH_BONUS = 500;
+  var WINGS_PER_POINT = 45;      // shared target: ~130 wings a minute
+  var WINGS_MATCH_BONUS = 220;   // a won match is ~4 min: 7*45 + 220
   var BALL_R = 0.11;
   // Floaty on purpose. Realistic gravity makes every shot skim the tape
   // and the rally dies on the first exchange.
@@ -80,7 +80,7 @@
   var EGG_RH = 0.52;       // column radius
   var EGG_TOP = 2.9;       // beam reaches this high
   var EGG_BOT = 0.1;
-  var EGG_WINGS = 100;
+  var EGG_WINGS = 45;
   var TOY_KINDS = ['car', 'top', 'duck', 'ring', 'robot'];
 
   // Measured flight: a return crosses the far court at ~2.3m by the net,

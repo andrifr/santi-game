@@ -96,12 +96,12 @@ automatic; what matters is *where* the ball meets you. Centre contact
 returns it flat and fast, edge contact sends it wide and slow. First to
 7. Dark Santi gets sharper as his score climbs.
 
-Every point won pays **100 chicken wings** into the same jar Wing Run
-fills, plus a 500 bonus for taking the match.
+Every point won pays **45 chicken wings** into the same jar Wing Run
+fills, plus a 220 bonus for taking the match.
 
 **Kinder eggs.** One or two hang over the far court in a beam of light.
 Put the ball through the beam and the egg cracks in mid-air for a
-**100-wing bonus** — shell halves tumble out and a random toy drops.
+**45-wing bonus** — shell halves tumble out and a random toy drops.
 Then Daley sprints on, grabs the toy and runs off with it, while play
 carries on around her.
 
@@ -218,10 +218,10 @@ you headbutt from underneath — some bricks hold three. Every brick and
 box hangs low enough that a *tapped* jump reaches its underside.
 
 At the end of each level the waffles are **traded for chicken wings** at
-5:1, and you watch the count tick over. It happens on a clear, on a
+3:1, and you watch the count tick over. It happens on a clear, on a
 death, on a restart and on quitting to the menu, so stopping never costs
-you the ones you found. A cleared level pays 80 wings on top, and
-Gargamel is worth **100** — stated on the victory panel, because a
+you the ones you found. A cleared level pays 50 wings on top, and
+Gargamel is worth **90** — stated on the victory panel, because a
 bounty paid silently is a bounty nobody believes they got.
 
 **Question boxes** hold one of three:
@@ -275,7 +275,7 @@ time and he has something to say about K3. Getting up is always first and
 going to bed always last; anything that has to stay in order — grab the
 get the cash topit out *then* melt it, leash *then* door *then* tree
 *then* home —
-moves around as a block. Each job pays 40 wings.
+moves around as a block. Each job pays 30 wings.
 
 The video is different every day, title and view count both, and so is
 the poster over his bed. Tap Rue while she's out with him and she has
@@ -317,6 +317,79 @@ only recorded clips are the family's own. `assets/k3songs/` is
 gitignored so a commercial track dropped in there can't be swept in by a
 `git add -A`.
 
+## Presents
+
+The chicken wings buy real, physical presents. The **PRESENTS** tab in
+the top-left of the menu opens a milestone bar with ten of them —
+#5 is the bigger one, #10 the grand prize.
+
+| # | Wings | # | Wings |
+| - | ----- | - | ----- |
+| 1 | 400 | 6 | 8,400 |
+| 2 | 1,200 | 7 | 11,200 |
+| 3 | 2,400 | 8 | 14,000 |
+| 4 | 4,000 | 9 | 16,800 |
+| 5 | **6,000** (bigger) | 10 | **20,000** (grand prize) |
+
+Retune by editing `GOALS` at the top of `js/presents.js` — the bar, the
+labels, the cards and the menu tab all read that one list.
+
+Because every mode pays at the same rate (below), the ladder is also a
+clock: #1 is about three minutes in, #5 about forty-five, and the grand
+prize about **two and a half hours** of playing. Move the grand prize
+and the rest scales with it.
+
+### Wings per minute
+
+Every mode targets the same **~130 wings a minute** for a competent
+player. **Wing Run is the anchor** — one collected wing is one banked
+wing, which is the whole point of the mode — and everything else was
+scaled to meet it.
+
+| Mode | Pays | Was |
+| ---- | ---- | --- |
+| Chicken Wing Run | 1 per wing collected (4.6–7.1 offered per second) | unchanged |
+| Santi Simulator | 30 per task, ~12 tasks a day | 40 |
+| Smurf World | 3 per waffle, 50 a level clear, 90 a boss | 5 / 80 / 100 |
+| Brawl Showdown | `30 + 18 × round`, 90 a boss | `60 + 40 × round`, 220 |
+| Pickleball | 45 a point, 220 a won match, 45 a Kinder egg | 100 / 500 / 100 |
+
+Before this pass Pickleball, Brawl and Smurf World paid 2–2.5× what Wing
+Run and the Simulator did for the same minute played. If you retune one
+mode, retune them all against the same target — they drift apart
+otherwise, and a single hot mode becomes the only one worth playing.
+
+Anyone who was already playing has their banked total doubled once on
+load (the `econ2` flag in the save), so doubling the goals can't take
+back a present that has already been handed over.
+
+### Daley's raid
+
+Once, at **9,000 wings**, opening the presents screen starts a cutscene:
+Daley walks on, eats the entire jar and apologises. It happens here and
+nowhere else — a cutscene that fired mid-run would take the controls
+away during a fight — and it never happens twice.
+
+The presents he has already been given **stay given**; only the jar is
+emptied. The presents still to come are re-priced onto a fresh 14,400
+ladder measured from the empty jar, so a present still lands every ~28
+minutes on the way back up. Leaving them at their original prices would
+have meant 86 minutes of climbing with nothing to collect, which is a
+worse experience than not having the cutscene at all.
+
+Net effect on the whole run: about **three hours** to the grand prize,
+against 2½ without her.
+
+Tunable at the top of `js/presents.js`: `RAID_AT` (when), `RAID_TOTAL`
+(how long the climb back is), and `raidGoals()` (how it's spread).
+
+### Reading the bar
+
+Collected presents are drawn in colour with a green tick; the ones still
+to come are grey silhouettes. Opening the screen after earning one
+sweeps the bar out, pops the new present and fires confetti — the menu
+tab wears a red badge until that's been seen.
+
 ## Characters
 
 `assets/faces/` holds transparent cutouts of Santi, Daley and Rue. The
@@ -333,6 +406,7 @@ index.html              shell + PWA meta
 css/style.css           page chrome, rotate overlay, iOS install hint
 js/engine.js            canvas/viewport, input, audio, save, art, scenes
 js/menu.js              mode select
+js/presents.js          the ten-present milestone ladder
 js/wingrun.js           mode 2 - chicken wing run
 js/pickleball.js        mode 1 - santi vs. dark santi
 js/sim.js               mode 5 - santi simulator

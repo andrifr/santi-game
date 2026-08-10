@@ -25,6 +25,14 @@
 
   var BOSS_EVERY = 5;             // rounds 5, 10, 15 ... get one
 
+  /* Wings are paid at the shared rate every mode targets - roughly 130
+     a minute for a competent player. A round runs about 24 + 6r
+     seconds (4 + r enemies, each tougher than the last), so the payout
+     tracks the round number rather than being flat. Was 60 + 40r, which
+     came out at 250+/min and made Brawl twice the earner Wing Run was. */
+  var BOSS_WINGS = 90;
+  function roundWings(r) { return 30 + r * 18; }
+
   var STICK_R = 62, DEAD = 14;
   var sawMouse = false;           // set by readControls; see the thumb sticks
   var MAX_AMMO = 3;
@@ -333,7 +341,7 @@
     // A boss round is not clear until she has been and gone, even if
     // the player wipes out every Daley during the warning.
     if (aliveBots() === 0 && !st.bossQueued && st.bossWarn <= 0) {
-      bankWings(60 + st.round * 40);
+      bankWings(roundWings(st.round));
       SG.save.submit('brawl', st.round);
       st.phase = 'won';
       SG.audio.play('wingbig');
@@ -793,8 +801,8 @@
      next Daley should not undo the hardest thing in the round. */
   function killedBot(bot) {
     if (bot.kind === 'boss') {
-      bankWings(220);
-      say('DALEY PRIME DOWN  +220', SG.COLORS.gold);
+      bankWings(BOSS_WINGS);
+      say('DALEY PRIME DOWN  +' + BOSS_WINGS, SG.COLORS.gold);
       SG.audio.play('wingbig');
       SG.shake(18);
       SG.burst(sx(bot.x), sy(bot.y) - 70, 46, {
@@ -1688,7 +1696,7 @@
     });
     SG.ui.text(g, 'Every Daley accounted for.', CX, 186, { size: 14, color: 'rgba(255,255,255,0.55)', shadow: false });
     SG.art.drawWing(g, CX - 62, 234, 1.3, -0.3);
-    SG.ui.text(g, '+' + (60 + st.round * 40) + ' wings', CX - 40, 234, {
+    SG.ui.text(g, '+' + roundWings(st.round) + ' wings', CX - 40, 234, {
       size: 18, color: SG.COLORS.gold, align: 'left', shadow: false,
     });
     SG.ui.text(g, 'Health restores between rounds', CX, 274, { size: 12, color: 'rgba(255,255,255,0.4)', shadow: false });

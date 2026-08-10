@@ -383,6 +383,18 @@
         for (var k in d) save.data[k] = d[k];
       }
     } catch (e) { /* private mode / disabled storage */ }
+
+    /* Economy v2: every mode was rebalanced to a common ~130 wings a
+       minute and the present goals doubled to match. Double what is
+       already banked at the same time, once - otherwise the rebalance
+       would quietly take back presents that had already been collected,
+       and those are real objects someone is holding. */
+    if (!save.data.econ2) {
+      save.data.wings = (save.data.wings || 0) * 2;
+      save.data.econ2 = true;
+      save.write();
+    }
+
     audio.enabled = save.data.sound !== false;
   };
   save.write = function () {
