@@ -242,6 +242,9 @@
   var audio = (SG.audio = { ctx: null, enabled: true, ready: false });
 
   audio.unlock = function () {
+    // Every touch, not just the first: this is where a track that
+    // autoplay refused gets its second chance.
+    if (audio.music && audio.music.refresh) audio.music.refresh();
     if (audio.ctx) {
       if (audio.ctx.state === 'suspended') audio.ctx.resume();
       return;
@@ -283,6 +286,83 @@
       .then(function (r) { return r.ok ? r.arrayBuffer() : Promise.reject(); })
       .then(function (ab) { audio.samples[key] = { raw: ab }; decodeSample(key); })
       .catch(function () { /* fall back to the synth cue */ });
+  };
+
+  /* ---- music ----
+     Streams through an <audio> element rather than the sample path
+     above. Those decode the whole file into an AudioBuffer, which for a
+     four-megabyte track means a visible hitch on the decode and the
+     entire PCM resident afterwards; an element streams it and gives us
+     looping and stopping for free.
+
+     Autoplay is the awkward part. A scene change is deferred to the top
+     of the next frame, so play() lands inside a rAF callback rather than
+     the tap that caused it, and Safari can refuse. When it does we hold
+     the request and retry from unlock(), which every pointerdown calls -
+     so the first touch inside the mode starts it. */
+  var music = (audio.music = { el: null, want: null, blocked: false });
+  var MUSIC_VOL = 0.45;      // under the voice lines, not over them
+
+  function musicEl() {
+    if (music.el) return music.el;
+    var el = new Audio();
+    el.preload = 'auto';
+    el.volume = MUSIC_VOL;
+    el.addEventListener('ended', function () {
+      // The intro is over: hand across to the track that loops.
+      if (!music.want || !music.want.loop) return;
+      el.loop = true;
+      el.src = music.want.loop;
+      musicPlay();
+    });
+    // A missing or undecodable file must not take the mode down with it.
+    el.addEventListener('error', function () { music.want = null; });
+    music.el = el;
+    return el;
+  }
+
+  function musicPlay() {
+    if (!music.el || !audio.enabled) return;
+    var p = music.el.play();
+    music.blocked = false;
+    if (p && p.catch) {
+      p.catch(function () { music.blocked = true; });
+    }
+  }
+
+  /* Play `intro` once, then `loop` forever. Passing the same file for
+     both just loops it from the start. */
+  audio.music.playThenLoop = function (intro, loop) {
+    var el = musicEl();
+    music.want = { intro: intro, loop: loop };
+    el.loop = !intro;
+    el.src = intro || loop;
+    try { el.currentTime = 0; } catch (e) {}
+    musicPlay();
+  };
+
+  audio.music.stop = function () {
+    music.want = null;
+    music.blocked = false;
+    if (!music.el) return;
+    music.el.pause();
+    // Drop the source too, or the rest of a 4MB track keeps downloading
+    // after the player has left the mode.
+    music.el.removeAttribute('src');
+    try { music.el.load(); } catch (e) {}
+  };
+
+  audio.music.setPaused = function (v) {
+    if (!music.el || !music.want) return;
+    if (v) music.el.pause();
+    else musicPlay();
+  };
+
+  // Called when the sound toggle flips, and from unlock() on every touch.
+  audio.music.refresh = function () {
+    if (!music.el || !music.want) return;
+    if (!audio.enabled) { music.el.pause(); return; }
+    if (music.el.paused) musicPlay();
   };
 
   // Returns false if the sample isn't playable, so callers can fall back.

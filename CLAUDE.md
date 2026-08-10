@@ -214,6 +214,17 @@ cost. Two recorded clips are the exception, loaded via
 missing or won't decode. iOS cannot create an AudioContext before the
 first touch, so samples are fetched immediately and decoded on that tap.
 
+**Music is a separate channel.** `SG.audio.music.playThenLoop(a, b)`
+streams through an `<audio>` element, *not* the sample path — a
+multi-megabyte `decodeAudioData` costs a visible hitch and keeps the
+whole PCM resident. Whoever starts it must stop it: the scene's `exit()`
+is the only reliable place, since every way out of a mode goes through a
+scene change, and `stop()` also drops the source so the rest of the file
+stops downloading. Autoplay will sometimes refuse, because a deferred
+scene change puts `play()` in a rAF callback rather than the tap that
+caused it; the request is held and retried from `audio.unlock()`, which
+every pointerdown calls.
+
 **No third-party audio ships here.** The repo is public and Pages serves
 it, so anything committed is published rather than private — the only
 recorded clips are the family's own. A commercial K3 track was offered

@@ -98,6 +98,7 @@
         SG.audio.enabled = !SG.audio.enabled;
         SG.save.data.sound = SG.audio.enabled;
         SG.save.write();
+        SG.audio.music.refresh();      // the toggle governs music too
       }
 
       var hint = SG.platform.iOS && !SG.platform.standalone

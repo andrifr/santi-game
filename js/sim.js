@@ -364,6 +364,7 @@
       overlay: null,                          // 'shirt' | 'call' | 'video' | 'nuke' | 'spray' | 'wings'
       ov: {},                                 // overlay working state
       paused: false,
+      musicPaused: false,      // what the music channel was last told
       flash: 0,
       rue: { x: 3660, y: 0, follow: false, phase: 0 },
     };
@@ -558,6 +559,13 @@
     if (st.bubble) { st.bubbleT += dt; if (st.bubbleT > 3) st.bubble = null; }
     if (st.flash > 0) st.flash -= dt;
     if (st.mirrorScare > 0) st.mirrorScare -= dt;
+
+    // Follow the pause with the music, however it was set - the tap
+    // below, the pause menu, or onBlur when the app is backgrounded.
+    if (st.paused !== st.musicPaused) {
+      st.musicPaused = st.paused;
+      SG.audio.music.setPaused(st.paused);
+    }
 
     if (st.paused) { handlePauseTaps(); return; }
 
@@ -1773,8 +1781,20 @@
     if (SG.ui.button(g, { x: CX + 10, y: 372, w: 190, h: 52 }, 'MENU', { color: '#3a4270', text: '#fff' })) SG.go('menu');
   }
 
+  /* Santi's song plays over the day, then the instrumental loops under
+     it until he leaves. exit() is the only reliable stop: every way out
+     of the mode - MENU, the pause menu, Escape - goes through a scene
+     change, and a 4MB track left playing over the menu would be its own
+     bug. */
+  var MUSIC = 'assets/music/santi-song.mp3';
+  var MUSIC_LOOP = 'assets/music/santi-song-instrumental.mp3';
+
   SG.register('sim', {
-    enter: function () { reset(); },
+    enter: function () {
+      reset();
+      SG.audio.music.playThenLoop(MUSIC, MUSIC_LOOP);
+    },
+    exit: function () { SG.audio.music.stop(); },
     update: update,
     draw: draw,
     onBlur: function () { if (st && !st.done) st.paused = true; },

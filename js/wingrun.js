@@ -9,8 +9,7 @@
 
   // ---- projection ------------------------------------------------
   var FOCAL = 520;
-  var HORIZON_BASE = 170;
-  var HORIZON = HORIZON_BASE;   // + camera lift, refreshed every frame
+  var HORIZON = 170;
   var CAM_Y = 2.6;          // camera height in world units (1 unit ~ 1m)
   var CX = SG.W / 2;        // refreshed each frame - SG.W is aspect-dependent
   var PLAYER_Z = 5.2;
@@ -35,10 +34,6 @@
   var LANE_SNAP = 11;       // how fast the player slides between lanes
   var HURDLE_H = 0.78;      // must be above this to clear
   var LOWBAR_BOTTOM = 1.02; // must be sliding to pass under
-  /* Matches the drawn box (bottom + 2.1 tall). Only reachable in the
-     slides - the old ceiling was 2.92 - but now that it is, dying while
-     visibly above the bar would read as a bug. */
-  var LOWBAR_TOP = LOWBAR_BOTTOM + 2.1;
   var BARRIER_H = 1.5;      // a crate needs real height
 
   /* Adidas slides: one extra jump per trip off the ground, for 10s.
@@ -53,21 +48,16 @@
      not worth the bug. */
   var ADIDAS_TIME = 10;
 
-  /* Second-jump velocity, set so the apex lands at ~5.85 - double what
-     the double jump used to reach. 1.46 off the first jump, plus
-     DOUBLE_V^2 / 2*GRAVITY on top. */
-  var DOUBLE_V = 13.9;
-
-  /* One world unit is FOCAL / PLAYER_Z = 100px at the player, so he
-     stands with his feet at y=430 with only 4.3 units of screen above
-     him - his head already clipped at the old 2.92 apex. A 5.85 jump
-     puts his feet at y=-155, off the top of the screen entirely, so the
-     camera has to go up with him. The lift is capped: past this the
-     horizon drops far enough that the road ahead stops being readable,
-     and he needs to see where he is landing. */
-  var LIFT_FROM = 2.0;      // altitude the camera starts following at
-  var LIFT_MAX = 300;
-  var LIFT_SNAP = 9;        // catch-up rate, and the settle back down
+  /* Second-jump velocity. The apex is 1.46 off the first jump plus
+     DOUBLE_V^2 / 2*GRAVITY on top, and the ceiling here is the screen,
+     not the feel: one world unit is FOCAL / PLAYER_Z = 100px at the
+     player, who stands with his feet at y=430. So every unit of altitude
+     costs 100px of headroom and there are only ~3 to spend before he
+     leaves the frame. 8.4 puts the apex at ~3.06 - feet at y=124, head
+     clipped about as much as it always has been - and needs no camera
+     pan. Going higher means moving the camera, which buys altitude by
+     flattening the road he has to land on. */
+  var DOUBLE_V = 8.4;
 
   // ---- where the road starts -------------------------------------
   /* Patterns spawn at FAR_Z and have to travel to the player, so
@@ -99,7 +89,6 @@
       magnet: 0,
       sauce: 0,
       adidas: 0,
-      camLift: 0,
       airJumps: 0,          // extra jumps used since he last left the ground
       invuln: 0,
       ents: [],
@@ -278,20 +267,9 @@
     SG.save.write();
   }
 
-  /* The camera only follows once he is above an ordinary jump, so a
-     normal run is framed exactly as it was and only the big Adidas leap
-     moves it. */
-  function updateCamera(dt) {
-    var want = SG.clamp((st.y - LIFT_FROM) * (FOCAL / PLAYER_Z), 0, LIFT_MAX);
-    st.camLift += (want - st.camLift) * Math.min(1, LIFT_SNAP * dt);
-    if (st.camLift < 0.3) st.camLift = 0;
-    HORIZON = HORIZON_BASE + st.camLift;
-  }
-
   // ---- update ----------------------------------------------------
   function update(dt) {
     CX = SG.W / 2;
-    updateCamera(dt);
     st.t += dt;
 
     for (var i = st.popups.length - 1; i >= 0; i--) {
@@ -558,8 +536,7 @@
     } else if (en.type === 'lowbar') {
       if (st.slide > 0 && st.y < 0.05) return;
       if (playerHeadroom() < LOWBAR_BOTTOM) return;
-      if (st.y > LOWBAR_TOP) return;              // clean over the top
-      die();
+      die();     // its drawn box tops out at 3.12, above the 3.06 apex
     } else if (en.type === 'barrier') {
       if (st.y > BARRIER_H) return;         // only ever reached in the slides
       die();
@@ -1277,9 +1254,6 @@
 
   function draw(g) {
     CX = SG.W / 2;
-    // Paused and dead frames draw without update(), and update() is what
-    // maintains this - without it the road would snap back mid-jump.
-    HORIZON = HORIZON_BASE + st.camLift;
     drawSky(g);
     drawRoad(g);
     drawProps(g);

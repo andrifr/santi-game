@@ -91,15 +91,17 @@ sauce gives 6 seconds of speed, invincibility and auto-collect.
 
 **Adidas slides** give 10 seconds of double jump — one extra jump per
 trip off the ground, taken by jumping again in mid-air. The apex is
-**5.73** against the 1.5 a crate needs and the 3.12 top of a scaffold
-bar, so while they last a red crate can be jumped instead of dodged and
-a bar can be cleared over the top instead of slid under. A single jump
-tops out at 1.46 and clears neither, so the slides are the only way over.
+**2.99** against the 1.5 a crate needs, so while they last a red crate
+can be jumped instead of dodged. A single jump tops out at 1.46 and
+never clears one, so the slides are the only way over. Hang time roughly
+doubles, 0.72s to 1.27s.
 
-At the player's depth one world unit is 100px, so a jump that size is
-taller than the screen — his feet alone would sit at y=−155. The camera
-lifts with him above 2.0 units, capped at 300px so the road ahead stays
-readable. An ordinary run never moves it.
+The ceiling on that number is the screen, not the feel. One world unit
+is 100px at the player, who stands with his feet at y=430, so every unit
+of altitude costs 100px of headroom and there are only about three to
+spend before he leaves the frame. Going higher means panning the camera,
+which buys altitude by flattening the road he has to land on — a scaffold
+bar's box tops out at 3.12 and stays out of reach for the same reason.
 
 The run opens with the road already dressed: the first wings arrive
 about 1.7 seconds in and the countdown is 1.8, so it's playable 3½
@@ -328,11 +330,28 @@ synthesized cue plays instead and the game retries next time. iOS can't
 create an audio context until the first touch, so clips are fetched
 immediately and decoded on that first tap.
 
+**Music.** The Santi Simulator plays `assets/music/santi-song.mp3` once
+when the day starts, then loops `santi-song-instrumental.mp3` — the same
+song without vocals — until you leave the mode.
+
+These stream through an `<audio>` element rather than the sample path
+above: `decodeAudioData` on a four-megabyte file costs a visible hitch
+and holds the whole PCM afterwards, and an element gives looping and
+stopping for free. `SG.audio.music.playThenLoop(intro, loop)` starts it
+and the scene's `exit()` stops it, which also drops the source so the
+rest of the track stops downloading. The sound toggle governs it, and
+pausing the game pauses it.
+
+A scene change is deferred to the next frame, so `play()` lands in a rAF
+callback rather than the tap that caused it and Safari may refuse. When
+it does, the request is held and retried from `audio.unlock()`, which
+every pointerdown calls — so the first touch inside the mode starts it.
+
 **No third-party audio ships here.** The repo is public and Pages serves
 it, so anything committed is published rather than kept private — the
-only recorded clips are the family's own. `assets/k3songs/` is
-gitignored so a commercial track dropped in there can't be swept in by a
-`git add -A`.
+recorded clips and the song are the family's own. `assets/k3songs/` is
+gitignored, and so are root-level `*.mp3`, so a commercial track dropped
+in either place can't be swept in by a `git add -A`.
 
 ## Presents
 
