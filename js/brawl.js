@@ -11,6 +11,9 @@
   'use strict';
   var SG = window.SG;
 
+  // Loops for as long as he is in here; the scene's exit() stops it.
+  var TRACK = 'assets/music/brawl.mp3';
+
   // Arena is world space; y is depth and gets squashed on screen, which
   // is what gives the three-quarter look. Aiming converts between them.
   var ARENA_W = 2000, ARENA_H = 1300;
@@ -273,6 +276,7 @@
 
   // ---------------------------------------------------------------
   function update(dt) {
+    SG.audio.music.follow(!!st.paused);
     st.t += dt;
     if (st.msg) { st.msgT += dt; if (st.msgT > 2) st.msg = null; }
     if (st.shake > 0) st.shake -= dt * 40;
@@ -1725,7 +1729,8 @@
   }
 
   SG.register('brawl', {
-    enter: function () { reset(true); },
+    enter: function () { reset(true); SG.audio.music.loop(TRACK); },
+    exit: function () { SG.audio.music.stop(); },
     update: update,
     draw: draw,
     onBlur: function () { if (st && st.phase === 'fight') st.paused = true; },

@@ -367,7 +367,6 @@
       overlay: null,                          // 'shirt' | 'call' | 'video' | 'nuke' | 'spray' | 'wings'
       ov: {},                                 // overlay working state
       paused: false,
-      musicPaused: false,      // what the music channel was last told
       y: 0,                    // height above the floor
       vy: 0,
       grounded: true,
@@ -569,12 +568,9 @@
     if (st.flash > 0) st.flash -= dt;
     if (st.mirrorScare > 0) st.mirrorScare -= dt;
 
-    // Follow the pause with the music, however it was set - the tap
-    // below, the pause menu, or onBlur when the app is backgrounded.
-    if (st.paused !== st.musicPaused) {
-      st.musicPaused = st.paused;
-      SG.audio.music.setPaused(st.paused);
-    }
+    // However the pause was set - the tap below, the pause menu, or
+    // onBlur when the app is backgrounded - the music follows it.
+    SG.audio.music.follow(st.paused);
 
     if (st.paused) { handlePauseTaps(); return; }
 

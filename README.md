@@ -356,9 +356,24 @@ synthesized cue plays instead and the game retries next time. iOS can't
 create an audio context until the first touch, so clips are fetched
 immediately and decoded on that first tap.
 
-**Music.** The Santi Simulator plays `assets/music/santi-song.mp3` once
-when the day starts, then loops `santi-song-instrumental.mp3` — the same
-song without vocals — until you leave the mode.
+**Music.** Every mode has its own track in `assets/music/`, looping for
+as long as you are in there:
+
+| Mode | Track |
+| ---- | ----- |
+| Pickleball | `pickleball.mp3` |
+| Chicken Wing Run | `wingrun.mp3` |
+| Brawl Showdown | `brawl.mp3` |
+| Smurf World | `smurf.mp3` |
+| Santi Simulator | `santi-song.mp3`, then `santi-song-instrumental.mp3` on a loop |
+
+The Simulator is the only one that plays something once first — Santi's
+song with vocals over the start of the day, handing over to the
+instrumental after it. `SG.audio.music.loop(url)` covers the rest.
+
+Each mode starts its track in `enter()`, stops it in `exit()`, and calls
+`SG.audio.music.follow(paused)` every frame with its own pause flag —
+which is idempotent, so no mode has to remember what it last asked for.
 
 These stream through an `<audio>` element rather than the sample path
 above: `decodeAudioData` on a four-megabyte file costs a visible hitch

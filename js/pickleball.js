@@ -8,6 +8,9 @@
   'use strict';
   var SG = window.SG;
 
+  // Loops for as long as he is in here; the scene's exit() stops it.
+  var TRACK = 'assets/music/pickleball.mp3';
+
   // ---- projection ------------------------------------------------
   // Camera sits well back with a long focal length, so Dark Santi at
   // the far baseline stays readable instead of shrinking to a speck.
@@ -387,6 +390,7 @@
   // ---- update ----------------------------------------------------
   function update(dt) {
     CX = SG.W / 2;
+    SG.audio.music.follow(st.phase === 'paused');
     st.t += dt;
     if (st.msg) { st.msgT += dt; if (st.msgT > 1.4) st.msg = null; }
 
@@ -985,7 +989,8 @@
   }
 
   SG.register('pickleball', {
-    enter: function () { reset(); beginServe(); },
+    enter: function () { reset(); beginServe(); SG.audio.music.loop(TRACK); },
+    exit: function () { SG.audio.music.stop(); },
     update: update,
     draw: draw,
     onBlur: function () { if (st && st.phase !== 'over') st.phase = 'paused'; },

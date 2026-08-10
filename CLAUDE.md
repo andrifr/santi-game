@@ -214,7 +214,11 @@ cost. Two recorded clips are the exception, loaded via
 missing or won't decode. iOS cannot create an AudioContext before the
 first touch, so samples are fetched immediately and decoded on that tap.
 
-**Music is a separate channel.** `SG.audio.music.playThenLoop(a, b)`
+**Music is a separate channel.** Every mode loops its own track from
+`assets/music/`: `SG.audio.music.loop(url)` in `enter()`, `stop()` in
+`exit()`, and `follow(paused)` every frame from `update()`, which is
+idempotent so a mode need not track what it last asked for.
+`SG.audio.music.playThenLoop(a, b)`
 streams through an `<audio>` element, *not* the sample path — a
 multi-megabyte `decodeAudioData` costs a visible hitch and keeps the
 whole PCM resident. Whoever starts it must stop it: the scene's `exit()`

@@ -300,7 +300,7 @@
      the tap that caused it, and Safari can refuse. When it does we hold
      the request and retry from unlock(), which every pointerdown calls -
      so the first touch inside the mode starts it. */
-  var music = (audio.music = { el: null, want: null, blocked: false });
+  var music = (audio.music = { el: null, want: null, blocked: false, paused: false });
   var MUSIC_VOL = 0.45;      // under the voice lines, not over them
 
   function musicEl() {
@@ -335,15 +335,20 @@
   audio.music.playThenLoop = function (intro, loop) {
     var el = musicEl();
     music.want = { intro: intro, loop: loop };
+    music.paused = false;
     el.loop = !intro;
     el.src = intro || loop;
     try { el.currentTime = 0; } catch (e) {}
     musicPlay();
   };
 
+  // A single track, round and round.
+  audio.music.loop = function (url) { audio.music.playThenLoop(null, url); };
+
   audio.music.stop = function () {
     music.want = null;
     music.blocked = false;
+    music.paused = false;
     if (!music.el) return;
     music.el.pause();
     // Drop the source too, or the rest of a 4MB track keeps downloading
@@ -352,9 +357,12 @@
     try { music.el.load(); } catch (e) {}
   };
 
-  audio.music.setPaused = function (v) {
-    if (!music.el || !music.want) return;
-    if (v) music.el.pause();
+  /* Modes call this every frame with their own pause flag rather than
+     each having to remember what it last asked for. */
+  audio.music.follow = function (paused) {
+    if (!music.el || !music.want || paused === music.paused) return;
+    music.paused = paused;
+    if (paused) music.el.pause();
     else musicPlay();
   };
 
@@ -362,6 +370,9 @@
   audio.music.refresh = function () {
     if (!music.el || !music.want) return;
     if (!audio.enabled) { music.el.pause(); return; }
+    // Not while the game itself is paused - this fires on every touch,
+    // including the one that opened the pause menu.
+    if (music.paused) return;
     if (music.el.paused) musicPlay();
   };
 

@@ -7,6 +7,9 @@
   'use strict';
   var SG = window.SG;
 
+  // Loops for as long as he is in here; the scene's exit() stops it.
+  var TRACK = 'assets/music/wingrun.mp3';
+
   // ---- projection ------------------------------------------------
   var FOCAL = 520;
   var HORIZON = 170;
@@ -270,6 +273,7 @@
   // ---- update ----------------------------------------------------
   function update(dt) {
     CX = SG.W / 2;
+    SG.audio.music.follow(st.phase === 'paused');
     st.t += dt;
 
     for (var i = st.popups.length - 1; i >= 0; i--) {
@@ -1348,7 +1352,8 @@
   }
 
   SG.register('wingrun', {
-    enter: function () { reset(); },
+    enter: function () { reset(); SG.audio.music.loop(TRACK); },
+    exit: function () { SG.audio.music.stop(); },
     update: update,
     draw: draw,
     onBlur: function () { if (st && st.phase === 'run') st.phase = 'paused'; },

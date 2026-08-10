@@ -12,6 +12,9 @@
   'use strict';
   var SG = window.SG;
 
+  // Loops for as long as he is in here; the scene's exit() stops it.
+  var TRACK = 'assets/music/smurf.mp3';
+
   // ---- world ------------------------------------------------------
   var BASE_Y = 452;            // top of the ground
   var DEATH_Y = 700;           // below this he has fallen out of the level
@@ -708,6 +711,7 @@
   // Update
   // ---------------------------------------------------------------
   function update(dt) {
+    SG.audio.music.follow(!!st.paused);
     st.t += dt;
     if (st.msg) { st.msgT += dt; if (st.msgT > 2.6) st.msg = null; }
 
@@ -2869,7 +2873,8 @@
 
   // ---------------------------------------------------------------
   SG.register('smurf', {
-    enter: function () { reset(0, 0); },
+    enter: function () { reset(0, 0); SG.audio.music.loop(TRACK); },
+    exit: function () { SG.audio.music.stop(); },
     update: update,
     draw: draw,
     onBlur: function () { if (st && st.phase === 'play') st.paused = true; },
