@@ -1527,10 +1527,18 @@
     }
     SG.syncInstallBanner = sync;
 
+    /* `remember` is the difference between "not this time" and "never
+       again", and only ever comes from something he actually pressed:
+       Not now, Install, or the install completing. Being shown the
+       banner does not set it, and neither does walking past it into a
+       game - hiding it and burning it are separate things. */
     function dismiss(remember) {
       offer = false;
       a2hsEl.classList.add('hidden');
-      if (remember) { save.data.seenA2HS = true; save.write(); }
+      if (remember && !save.data.seenA2HS) {
+        save.data.seenA2HS = true;
+        save.write();
+      }
     }
 
     /* Chrome offers a real one-tap install, but only for a site that
@@ -1560,11 +1568,23 @@
     installBtn.addEventListener('click', function () {
       if (!deferred) return;
       var d = deferred;
-      deferred = null;              // one shot, however it goes
+      deferred = null;              // prompt() is one shot, however it goes
       d.prompt();
+
+      /* Backing out of Chrome's own install dialog is not a decision
+         about this banner, so it does not count as one. It goes away for
+         now - the prompt is spent and the button would do nothing - but
+         the flag stays clear so the offer comes back on a later visit.
+         Losing it forever because he tapped Install and then thought
+         about it is the wrong way round. */
       var done = d.userChoice;
-      if (done && done.then) done.then(function () { dismiss(true); });
-      else dismiss(true);
+      if (done && done.then) {
+        done.then(function (choice) {
+          dismiss(!choice || choice.outcome === 'accepted');
+        }, function () { dismiss(false); });
+      } else {
+        dismiss(true);
+      }
     });
 
     window.addEventListener('appinstalled', function () { dismiss(true); });
