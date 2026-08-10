@@ -278,6 +278,19 @@ depth — an easy and near-invisible bug.
 - **Touch controls belong clear of the bottom edge of the screen.** On
   an iPhone that strip is the home-indicator gesture area; a thumb
   parked there has its touch taken by the system mid-press.
+- **The top right corner belongs to `#fsBtn`.** It is a fixed DOM
+  overlay at a higher z-index covering roughly the first 66 virtual
+  pixels of that corner on the smallest phone, so anything drawn under
+  it is invisible and un-tappable. `SG.ui.pauseRect()` / `drawPause()` /
+  `drawWings()` are the shared in-game HUD corner, held left of it; use
+  them rather than placing a button there by hand.
+- **Drawn touch buttons are a hint, not the hit box.** Smurf World's
+  pads read a whole screen half, not the rectangle they draw: a thumb
+  that drifts a few pixels off a small button falls into a dead zone and
+  stops the player dead, which is what "gets stuck" and "not sensitive
+  enough" meant. Two padded rects side by side are the same trap, since
+  they overlap and the boundary silently favours whichever is tested
+  first - use one zone with a split instead.
 - **Image previews may ignore alpha.** Several source cutouts look like
   they still have a background when they do not. Check the alpha channel
   before "fixing" it — a background-removal pass on an already-cut image

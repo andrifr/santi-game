@@ -1266,6 +1266,44 @@
     return hot;
   };
 
+  /* ---- shared in-game HUD corner ----
+     Every mode puts the wing count and the pause button in the same
+     place: top right, wings to the left of pause.
+
+     Both are held left of x = SG.W - 78. `#fsBtn` is a DOM overlay
+     pinned to the top right at a higher z-index, and on the smallest
+     phone this runs on it covers roughly the first 66 virtual pixels of
+     that corner - anything drawn under it is invisible, and a button
+     under it is un-tappable. */
+  ui.pauseRect = function () { return { x: SG.W - 126, y: 18, w: 44, h: 36 }; };
+
+  ui.drawPause = function (g) {
+    var r = ui.pauseRect();
+    g.fillStyle = 'rgba(10,12,28,0.55)';
+    SG.roundRect(g, r.x, r.y, r.w, r.h, 9);
+    g.fill();
+    g.strokeStyle = 'rgba(255,255,255,0.22)';
+    g.lineWidth = 2;
+    g.stroke();
+    g.fillStyle = 'rgba(255,255,255,0.85)';
+    g.fillRect(r.x + 14, r.y + 9, 5, 18);
+    g.fillRect(r.x + 25, r.y + 9, 5, 18);
+  };
+
+  // Right-aligned so it grows leftwards and never reaches the button.
+  ui.drawWings = function (g, n) {
+    var right = ui.pauseRect().x - 14;
+    var str = String(n);
+    var size = 24;
+    g.font = '900 ' + size + 'px ' + SG.FONT;
+    var w = g.measureText(str).width;
+    art.drawWing(g, right - w - 20, 36, 1.1, -0.3);
+    ui.text(g, str, right, 36, {
+      size: size, color: SG.COLORS.gold, align: 'right',
+      stroke: '#1a1030', strokeWidth: 6, shadow: false,
+    });
+  };
+
   function shade(hex, amt) {
     var m = /^#?([0-9a-f]{6})$/i.exec(hex);
     if (!m) return hex;

@@ -498,7 +498,7 @@
     m.x += (m.tx - m.x) * Math.min(1, 14 * dt);
   }
 
-  function pauseRect() { return { x: SG.W - 56, y: SG.H - 48, w: 40, h: 34 }; }
+  function pauseRect() { return SG.ui.pauseRect(); }
 
   // ---- drawing ---------------------------------------------------
   function quad(g, x0, x1, z0, z1) {
@@ -864,10 +864,7 @@
     SG.ui.text(g, 'FIRST TO ' + WIN_SCORE, CX, 64, { size: 10, color: 'rgba(255,255,255,0.35)', shadow: false });
 
     // wings banked this match
-    SG.art.drawWing(g, 32, 30, 1.1, -0.3);
-    SG.ui.text(g, String(st.wings), 52, 30, {
-      size: 22, color: SG.COLORS.gold, align: 'left', stroke: '#1a1030', strokeWidth: 5, shadow: false,
-    });
+    SG.ui.drawWings(g, st.wings);
 
     if (st.rally > 2 && st.phase === 'rally') {
       SG.ui.text(g, 'RALLY ' + st.rally, 24, 58, { size: 15, color: 'rgba(255,255,255,0.6)', align: 'left', shadow: false });
@@ -893,13 +890,7 @@
     }
 
     if (st.phase !== 'over') {
-      var pr = pauseRect();
-      g.fillStyle = 'rgba(10,12,26,0.5)';
-      SG.roundRect(g, pr.x, pr.y, pr.w, pr.h, 8);
-      g.fill();
-      g.fillStyle = 'rgba(255,255,255,0.8)';
-      g.fillRect(pr.x + 13, pr.y + 10, 5, 15);
-      g.fillRect(pr.x + 23, pr.y + 10, 5, 15);
+      SG.ui.drawPause(g);
     }
   }
 

@@ -873,7 +873,7 @@
     }
   }
 
-  function pauseRect() { return { x: SG.W - 56, y: 14, w: 40, h: 34 }; }
+  function pauseRect() { return SG.ui.pauseRect(); }
 
   // ---------------------------------------------------------------
   function sx(wx) { return wx - st.cam.x + SG.W / 2; }
@@ -1528,10 +1528,7 @@
       px += 42;
     });
 
-    SG.art.drawWing(g, SG.W - 130, 34, 1.0, -0.3);
-    SG.ui.text(g, String(st.wings), SG.W - 114, 34, {
-      size: 18, color: SG.COLORS.gold, align: 'left', stroke: '#1a1030', strokeWidth: 4, shadow: false,
-    });
+    SG.ui.drawWings(g, st.wings);
 
     if (st.msg) {
       g.save();
@@ -1541,12 +1538,7 @@
     }
 
     if (st.phase === 'fight' && !st.paused) {
-      var pr = pauseRect();
-      g.fillStyle = 'rgba(10,12,26,0.5)';
-      SG.roundRect(g, pr.x, pr.y, pr.w, pr.h, 8); g.fill();
-      g.fillStyle = 'rgba(255,255,255,0.8)';
-      g.fillRect(pr.x + 13, pr.y + 10, 5, 15);
-      g.fillRect(pr.x + 23, pr.y + 10, 5, 15);
+      SG.ui.drawPause(g);
     }
 
     // The armed-super prompt owns the bottom line while it is up.

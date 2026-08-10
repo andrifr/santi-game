@@ -613,6 +613,14 @@
     if (padJump && !st.jumpHeld) doJump();
     st.jumpHeld = padJump;
 
+    // The touch twin of E. A tap, not a hold - and it consumes the tap
+    // either way, so a miss never falls through to the room behind it.
+    if (st.sawTouch && SG.input.tappedRect(rc.use)) {
+      var touchNear = reachObject();
+      if (touchNear) useObject(touchNear);
+      else SG.audio.play('back');
+    }
+
     var padLeft = heldIn(rc.left), padRight = heldIn(rc.right);
 
     // keyboard for desktop
@@ -675,6 +683,8 @@
   function controlRects() {
     return {
       jump:  { x: 30, y: SG.H - 132, w: 86, h: 78 },
+      // Touch only - a keyboard has E for this.
+      use:   { x: 126, y: SG.H - 132, w: 86, h: 78 },
       left:  { x: SG.W - 216, y: SG.H - 132, w: 78, h: 78 },
       right: { x: SG.W - 128, y: SG.H - 132, w: 78, h: 78 },
     };
@@ -692,6 +702,8 @@
   function onControls(x, y) {
     var rc = controlRects();
     for (var k in rc) {
+      // Not drawn on desktop, so it must not be a dead patch there either.
+      if (k === 'use' && !st.sawTouch) continue;
       var r = rc[k];
       if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return true;
     }
@@ -777,7 +789,7 @@
 
   function handleDoneTaps() { /* buttons handled in draw */ }
 
-  function pauseRect() { return { x: SG.W - 56, y: SG.H - 48, w: 40, h: 34 }; }
+  function pauseRect() { return SG.ui.pauseRect(); }
 
   // ---------------------------------------------------------------
   // Overlays - the little interactions
@@ -963,6 +975,7 @@
   function drawControls(g) {
     var rc = controlRects();
     pad(g, rc.jump, 'up', heldIn(rc.jump));
+    if (st.sawTouch) pad(g, rc.use, 'use', !!reachObject());
     pad(g, rc.left, 'left', heldIn(rc.left));
     pad(g, rc.right, 'right', heldIn(rc.right));
   }
@@ -976,6 +989,16 @@
     g.strokeStyle = on ? '#d9b6ff' : 'rgba(255,255,255,0.3)';
     g.lineWidth = 2.5;
     g.stroke();
+
+    if (dir === 'use') {
+      // Lit only when there is something to use, so it reads as a
+      // prompt rather than a button that does nothing most of the time.
+      SG.ui.text(g, 'USE', cx, cy + 1, {
+        size: 16, color: on ? '#fff' : 'rgba(255,255,255,0.45)', shadow: false,
+      });
+      g.restore();
+      return;
+    }
 
     g.fillStyle = on ? '#fff' : 'rgba(255,255,255,0.78)';
     var a = 15;
@@ -1610,10 +1633,7 @@
     }
 
     // wings
-    SG.art.drawWing(g, SG.W - 96, 34, 1.1, -0.3);
-    SG.ui.text(g, String(st.wings), SG.W - 78, 34, {
-      size: 22, color: SG.COLORS.gold, align: 'left', stroke: '#1a1030', strokeWidth: 5, shadow: false,
-    });
+    SG.ui.drawWings(g, st.wings);
 
     if (st.flash > 0) {
       g.save();
@@ -1623,13 +1643,7 @@
     }
 
     if (!st.done) {
-      var pr = pauseRect();
-      g.fillStyle = 'rgba(10,12,26,0.5)';
-      SG.roundRect(g, pr.x, pr.y, pr.w, pr.h, 8);
-      g.fill();
-      g.fillStyle = 'rgba(255,255,255,0.8)';
-      g.fillRect(pr.x + 13, pr.y + 10, 5, 15);
-      g.fillRect(pr.x + 23, pr.y + 10, 5, 15);
+      SG.ui.drawPause(g);
     }
   }
 

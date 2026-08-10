@@ -466,20 +466,33 @@
   // ---------------------------------------------------------------
   // Left of the shell's fullscreen button, which is fixed to the very
   // corner of the page and would swallow taps meant for this.
-  function pauseRect() { return { x: SG.W - 106, y: 12, w: 40, h: 34 }; }
+  function pauseRect() { return SG.ui.pauseRect(); }
   /* Held clear of the very bottom edge: on an iPhone that strip is the
      home-indicator gesture area, and a thumb parked there gets its touch
      stolen by the system mid-press. */
-  function padLeft() { return { x: 16, y: SG.H - 132, w: 96, h: 96 }; }
-  function padRight() { return { x: 122, y: SG.H - 132, w: 96, h: 96 }; }
-  function padJump() { return { x: SG.W - 144, y: SG.H - 140, w: 110, h: 110 }; }
+  /* Same rects, same look and the same sides as the Simulator: jump
+     bottom left, walk bottom right. Smurf's pause button is top right,
+     so nothing down here has to dodge it. */
+  function padJump()  { return { x: 30, y: SG.H - 132, w: 86, h: 78 }; }
+  function padLeft()  { return { x: SG.W - 216, y: SG.H - 132, w: 78, h: 78 }; }
+  function padRight() { return { x: SG.W - 128, y: SG.H - 132, w: 78, h: 78 }; }
 
-  /* The whole bottom-left corner steers, split down the middle. The
-     arrows are only where the corner is drawn - a thumb that drifted a
+  /* The drawn pads are a hint, not the hit box. A thumb that drifted a
      few pixels off a button used to fall into a dead zone and stop him
-     dead, which is what "gets stuck" and "not sensitive enough" were. */
-  function padZone() { return { x: 0, y: SG.H - 196, w: 330, h: 196 }; }
-  var PAD_SPLIT = 120;
+     dead - "gets stuck", "not sensitive enough" - so the whole bottom
+     right corner steers, split down the middle, and the whole left half
+     jumps. Moving the buttons must not bring that back.
+
+     Left and right are one zone rather than two rects for the same
+     reason: two padded rects would overlap in the middle and the
+     boundary would silently favour whichever was tested first. */
+  var PAD_SLOP = 30;
+  function padZone() {
+    var l = padLeft(), r = padRight();
+    return { x: l.x - PAD_SLOP, y: l.y - PAD_SLOP,
+             w: (r.x + r.w) - l.x + PAD_SLOP * 2, h: l.h + PAD_SLOP * 2 };
+  }
+  function padSplit() { var l = padLeft(), r = padRight(); return (l.x + l.w + r.x) / 2; }
 
   function inRect(x, y, r) { return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h; }
 
@@ -501,11 +514,11 @@
       // Tested against the CURRENT position, so a thumb slides from one
       // side to the other without lifting.
       if (inRect(p.x, p.y, zone)) {
-        if (p.x < PAD_SPLIT) left = true; else right = true;
+        if (p.x < padSplit()) left = true; else right = true;
         continue;
       }
-      if (p.x > SG.W * 0.5) { jump = true; continue; }
-      // Anywhere else on the left half still steers, relative to where
+      if (p.x < SG.W * 0.5) { jump = true; continue; }
+      // Anywhere else on the right half still steers, relative to where
       // the finger landed.
       var dx = p.x - p.sx;
       if (dx < -10) left = true;
@@ -516,7 +529,7 @@
     if (!jump) {
       for (var i = 0; i < SG.input.taps.length; i++) {
         var t = SG.input.taps[i];
-        if (t.x > SG.W * 0.5 && !inRect(t.x, t.y, pr)) {
+        if (t.x < SG.W * 0.5 && !inRect(t.x, t.y, pr)) {
           SG.input.taps.splice(i, 1);
           st.jumpBuf = BUFFER;
           break;
@@ -1355,7 +1368,7 @@
     drawPlayer(g, cam);
 
     drawHUD(g);
-    if (SG.platform.touch && st.phase === 'play' && !st.paused) drawPad(g);
+    if (st.phase === 'play' && !st.paused) drawPad(g);
     if (st.msg) drawMsg(g);
 
     if (st.paused) drawPaused(g);
@@ -2652,18 +2665,8 @@
     });
 
     // pause
-    var pr = pauseRect();
-    g.fillStyle = 'rgba(10,12,28,0.5)';
-    SG.roundRect(g, pr.x, pr.y, pr.w, pr.h, 9);
-    g.fill();
-    g.fillStyle = 'rgba(255,255,255,0.8)';
-    g.fillRect(pr.x + 13, pr.y + 9, 5, 16);
-    g.fillRect(pr.x + 22, pr.y + 9, 5, 16);
-
-    SG.art.drawWing(g, SG.W - 100, 72, 0.95, -0.3);
-    SG.ui.text(g, String(st.wings), SG.W - 84, 72, {
-      size: 18, color: SG.COLORS.gold, align: 'left', stroke: '#1a1030', strokeWidth: 5, shadow: false,
-    });
+    SG.ui.drawPause(g);
+    SG.ui.drawWings(g, st.wings);
 
     var bar = 0;
     if (st.p.bigT > 0) powerBar(g, bar++, st.p.bigT / BIG_TIME, '#7ee08a', 'BIG');
@@ -2720,38 +2723,36 @@
 
   function padBtn(g, r, kind) {
     var cx = r.x + r.w / 2, cy = r.y + r.h / 2;
-    var zone = padZone();
-    var held = false;
+    var zone = padZone(), split = padSplit();
+    var on = false;
     for (var id in SG.input.pointers) {
       var p = SG.input.pointers[id];
-      var on = kind === 'jump'
-        ? p.x > SG.W * 0.5 && !inRect(p.sx, p.sy, pauseRect())
-        : inRect(p.x, p.y, zone) && (kind === 'left' ? p.x < PAD_SPLIT : p.x >= PAD_SPLIT);
-      if (on) { held = true; break; }
+      var hit = kind === 'jump'
+        ? p.x < SG.W * 0.5 && !inRect(p.sx, p.sy, pauseRect())
+        : inRect(p.x, p.y, zone) && (kind === 'left' ? p.x < split : p.x >= split);
+      if (hit) { on = true; break; }
     }
+
     g.save();
-    g.globalAlpha = held ? 0.5 : 0.24;
-    g.fillStyle = '#ffffff';
-    g.beginPath();
-    g.arc(cx, cy, r.w / 2, 0, Math.PI * 2);
+    g.fillStyle = on ? 'rgba(176,112,255,0.55)' : 'rgba(10,12,26,0.42)';
+    SG.roundRect(g, r.x, r.y, r.w, r.h, 16);
     g.fill();
-    g.globalAlpha = held ? 0.95 : 0.6;
-    g.fillStyle = '#0e1430';
+    g.strokeStyle = on ? '#d9b6ff' : 'rgba(255,255,255,0.3)';
+    g.lineWidth = 2.5;
+    g.stroke();
+
+    g.fillStyle = on ? '#fff' : 'rgba(255,255,255,0.78)';
+    var a = 15;
+    g.beginPath();
     if (kind === 'jump') {
-      g.beginPath();
-      g.moveTo(cx, cy - 17); g.lineTo(cx + 15, cy + 2); g.lineTo(cx + 6, cy + 2);
-      g.lineTo(cx + 6, cy + 16); g.lineTo(cx - 6, cy + 16); g.lineTo(cx - 6, cy + 2);
-      g.lineTo(cx - 15, cy + 2);
-      g.closePath();
-      g.fill();
+      g.moveTo(cx, cy - a); g.lineTo(cx + a, cy + a * 0.68); g.lineTo(cx - a, cy + a * 0.68);
+    } else if (kind === 'left') {
+      g.moveTo(cx - a, cy); g.lineTo(cx + a * 0.68, cy - a); g.lineTo(cx + a * 0.68, cy + a);
     } else {
-      // apex points the way the button actually moves him
-      var d = kind === 'left' ? -1 : 1;
-      g.beginPath();
-      g.moveTo(cx + d * 12, cy); g.lineTo(cx - d * 10, cy - 14); g.lineTo(cx - d * 10, cy + 14);
-      g.closePath();
-      g.fill();
+      g.moveTo(cx + a, cy); g.lineTo(cx - a * 0.68, cy - a); g.lineTo(cx - a * 0.68, cy + a);
     }
+    g.closePath();
+    g.fill();
     g.restore();
   }
 

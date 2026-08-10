@@ -200,20 +200,21 @@ Gargamel. Four levels: the village, the wood, the gate, and the lair.
 
 | Action | Phone | Desktop |
 | ------ | ----- | ------- |
-| Run | anywhere in the bottom-left corner | ← → / A D |
-| Jump | anywhere on the right half | ↑ / W / Space |
+| Run | ◀ ▶ pads, bottom right | ← → / A D |
+| Jump | ▲ pad, bottom left | ↑ / W / Space |
 | Jump higher | hold it | hold it |
 
 **Hold to jump higher.** A tap clears 66px, a full hold 127px — a tap
 gets you over a gnap, a hold gets you onto a ledge. Nothing in the game
 *requires* the hold, including Gargamel.
 
-The whole bottom-left corner steers, split down the middle, not just the
-two drawn arrows. Both thumbs work at once and a thumb can slide from
-one side to the other without lifting — a dead zone between the arrows
-stops a player dead and reads as the game being broken. The pads sit
-clear of the very bottom edge, which on an iPhone belongs to the
-home-indicator gesture.
+Same pads, same sides as the Simulator. **The drawn pads are a hint,
+not the hit box**: the whole bottom-right corner steers, split down the
+middle, and the whole left half jumps. Both thumbs work at once and a
+thumb can slide from one side to the other without lifting — a dead zone
+between the arrows stops a player dead and reads as the game being
+broken. The pads sit clear of the very bottom edge, which on an iPhone
+belongs to the home-indicator gesture.
 
 If a direction ever does jam on, **pausing releases every touch** — as
 does leaving to the menu, or switching away from the app and back.
@@ -293,11 +294,12 @@ with an edge marker pointing the way when the target is off screen.
 | ------ | ----- | ------- |
 | Walk | ◀ ▶ pads, bottom right | ← → / A D |
 | Jump | ▲ pad, bottom left | ↑ / W / Space |
-| Use the thing you're at | tap it | **E**, or click it |
+| Use the thing you're at | **USE** pad, or tap it | **E**, or click it |
 | Go somewhere | tap it | click it |
 
 Standing in reach of anything puts an **E · INTERACT** prompt at the
-bottom of the screen, naming what it would act on. E prefers the current
+bottom of the screen, naming what it would act on — or, on a phone,
+lights the **USE** pad beside the jump arrow. E prefers the current
 task's target over whatever is nearest, so it always moves the day along
 when it can. It runs through the same code a click does, so clicking
 still works exactly as before. The prompt is hidden once a touch is seen

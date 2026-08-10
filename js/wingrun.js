@@ -21,7 +21,7 @@
   var LANE_X = [-1.75, 0, 1.75];
   var ROAD_HALF = 2.95;
 
-  function pauseRect() { return { x: SG.W - 56, y: SG.H - 48, w: 40, h: 34 }; }
+  function pauseRect() { return SG.ui.pauseRect(); }
 
   function proj(wx, wy, z) {
     var s = FOCAL / z;
@@ -1200,8 +1200,7 @@
     SG.ui.text(g, 'BEST ' + SG.save.best('wingrun'), 26, 66, { size: 13, color: 'rgba(255,255,255,0.5)', align: 'left', shadow: false });
 
     // wings
-    SG.art.drawWing(g, SG.W - 104, 36, 1.15, -0.3);
-    SG.ui.text(g, String(st.wings), SG.W - 84, 36, { size: 26, color: SG.COLORS.gold, align: 'left', stroke: '#1a1030', strokeWidth: 6, shadow: false });
+    SG.ui.drawWings(g, st.wings);
 
     // power-up timers
     var bar = 0;
@@ -1220,15 +1219,7 @@
     }
 
     // pause (input handled up in update so nothing else steals the tap)
-    if (st.phase === 'run' || st.phase === 'ready') {
-      var pr = pauseRect();
-      g.fillStyle = 'rgba(10,12,26,0.5)';
-      SG.roundRect(g, pr.x, pr.y, pr.w, pr.h, 8);
-      g.fill();
-      g.fillStyle = 'rgba(255,255,255,0.8)';
-      g.fillRect(pr.x + 13, pr.y + 10, 5, 15);
-      g.fillRect(pr.x + 23, pr.y + 10, 5, 15);
-    }
+    if (st.phase === 'run' || st.phase === 'ready') SG.ui.drawPause(g);
   }
 
   function powerBar(g, slot, frac, color, label, secsLeft) {
