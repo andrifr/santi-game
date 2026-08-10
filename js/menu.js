@@ -131,9 +131,9 @@
   var DEV_PRESETS = [
     { label: '0', wings: 0 },
     { label: '5,900', wings: 5900 },       // one tick short of the bigger present
-    { label: '8,900', wings: 8900 },       // one tick short of Daley
-    { label: '9,000', wings: 9000 },       // fires the raid
-    { label: '20,000', wings: 20000 },     // everything, pre-raid ladder
+    { label: '18,900', wings: 18900 },     // one tick short of Daley
+    { label: '19,000', wings: 19000 },     // fires the raid, holding nine
+    { label: '25,000', wings: 25000 },     // past the grand prize: she still eats it
   ];
 
   // Wings, collected presents and Daley all back to a known state.
@@ -205,13 +205,14 @@
       color: '#a077ff', text: '#17120a', size: 14, r: 10,
     })) {
       // Straight to the re-based ladder, without sitting through her.
+      var kept = SG.presents.keepMax;
       SG.save.data.wings = 0;
       SG.save.data.raid = true;
-      SG.save.data.raidWon = 6;
-      SG.save.data.presentsSeen = 6;
+      SG.save.data.raidWon = kept;
+      SG.save.data.presentsSeen = kept;
       SG.save.data.econ2 = true;
       SG.save.write();
-      devSay('post-raid: 6 kept, 4 re-priced');
+      devSay('post-raid: ' + kept + ' kept, grand prize re-priced');
     }
 
     if (SG.ui.button(g, { x: CX + 310 - 24 - 186, y: 264, w: 186, h: 40 }, 'WIPE SAVE', {

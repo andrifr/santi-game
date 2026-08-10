@@ -472,23 +472,29 @@ back a present that has already been handed over.
 
 ### Daley's raid
 
-Once, at **9,000 wings**, opening the presents screen starts a cutscene:
-Daley walks on, eats the entire jar and apologises. It happens here and
-nowhere else — a cutscene that fired mid-run would take the controls
-away during a fight — and it never happens twice.
+Once, at **19,000 wings**, opening the presents screen starts a
+cutscene: Daley walks on, eats the entire jar and apologises. It happens
+here and nowhere else — a cutscene that fired mid-run would take the
+controls away during a fight — and it never happens twice.
 
-The presents he has already been given **stay given**; only the jar is
-emptied. The presents still to come are re-priced onto a fresh 14,400
-ladder measured from the empty jar, so a present still lands every ~28
-minutes on the way back up. Leaving them at their original prices would
-have meant 86 minutes of climbing with nothing to collect, which is a
-worse experience than not having the cutscene at all.
+19,000 sits between #9 (16,800) and #10 (20,000), so he arrives holding
+**nine**, and the grand prize is the one thing she costs him. Those nine
+are real objects in his hands and **stay given**; only the jar is
+emptied. The grand prize is then re-priced to **10,000** from the empty
+jar.
 
-Net effect on the whole run: about **three hours** to the grand prize,
-against 2½ without her.
+It fires on **opening the screen**, not on crossing the line, so banking
+past 20,000 first doesn't dodge it — and what he keeps is capped at nine
+even then. Reaching the number isn't the same as having been handed the
+box, and she gets there first.
+
+    19,000 to the raid   ~146 min, nine presents
+    10,000 after it      ~77 min, the grand prize
+    ~29,000 total        about 3¾ hours
 
 Tunable at the top of `js/presents.js`: `RAID_AT` (when), `RAID_TOTAL`
-(how long the climb back is), and `raidGoals()` (how it's spread).
+(how long the climb back is), `RAID_KEEP_MAX` (how many survive it), and
+`raidGoals()` (how the rest is spread).
 
 ### Reading the bar
 

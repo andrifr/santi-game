@@ -27,34 +27,31 @@
      one at a time, or they drift out of parity again. */
   var GOALS = [400, 1200, 2400, 4000, 6000, 8400, 11200, 14000, 16800, 20000];
 
-  /* Daley's raid. Once, and only once, at 9,000 wings she walks in and
+  /* Daley's raid. Once, and only once, at 19,000 wings she walks in and
      eats the entire jar - see the cutscene at the bottom of this file.
 
-     9,000 always means presents 1-6 are already collected (#6 costs
-     8,400, #7 costs 11,200), so the raid is deterministic: it can never
-     catch him mid-tier.
+     19,000 sits between #9 (16,800) and #10 (20,000), so he arrives
+     holding nine and the grand prize is the one thing she costs him.
+     The nine are real objects in his hands: their goals become 0 and
+     they stay ticked. Only the grand prize is re-priced, onto a fresh
+     10,000 from the empty jar.
 
-     The six he has are real objects in his hands, so they stay
-     collected - their goals become 0 and they simply remain ticked. The
-     last four are re-priced onto a fresh ladder measured from the empty
-     jar. Leaving them at their original numbers would mean 86 minutes
-     of climbing with no present at all, which is worse than not having
-     the cutscene: the raid is meant to add play time, not a drought.
-     Re-pricing keeps a present landing every ~28 minutes and still adds
-     about 45 minutes over never being raided.
+     It fires on opening this screen, not on crossing the line, so
+     banking past 20,000 first does not dodge it - and it caps what he
+     keeps at nine even then. Reaching the number is not the same as
+     having been handed the box, and she gets there first.
 
-         raid at 9,000     -> 69 min, 6 presents
-         then 14,400 more  -> 111 min, 4 presents
-         total             -> ~3 hours */
-  var RAID_AT = 9000;
-  var RAID_TOTAL = 14400;        // the whole climb back, ~111 minutes
+         raid at 19,000    -> 146 min, 9 presents
+         then 10,000 more  -> 77 min, the grand prize
+         total             -> ~29,000 wings, about 3 3/4 hours */
+  var RAID_AT = 19000;
+  var RAID_TOTAL = 10000;        // the climb back to the grand prize
+  var RAID_KEEP_MAX = 9;         // she is always in time for the last one
 
-  /* The post-raid ladder, given how many presents he was actually
-     holding when she struck. 9,000 normally means six, but a player who
-     banks a long way before ever opening this screen can arrive with
-     more - and zeroing a fixed six would un-collect a present that is
-     already in his hands. Everything he has goes to 0 and stays
-     collected; whatever is left is spread across the climb back. */
+  /* The post-raid ladder, given how many presents he kept. Everything
+     he holds goes to 0 and stays collected; whatever is left is spread
+     across the climb back - which is the grand prize alone unless a
+     save from an older build arrives with fewer. */
   function raidGoals(won) {
     var left = PRESENTS.length - won;
     var out = [];
@@ -74,7 +71,7 @@
   }
 
   function goals() {
-    return SG.save.data.raid ? raidGoals(SG.save.data.raidWon || 6) : GOALS;
+    return SG.save.data.raid ? raidGoals(SG.save.data.raidWon || RAID_KEEP_MAX) : GOALS;
   }
 
   // PRESENTS[i].wings is what everything else reads, so re-point it at
@@ -251,6 +248,8 @@
     },
     // The menu pulses the tab harder when she is waiting in there.
     raidDue: function () { return !SG.save.data.raid && wingsNow() >= RAID_AT; },
+    raidAt: RAID_AT,
+    keepMax: RAID_KEEP_MAX,
   };
 
   // ---------------------------------------------------------------
@@ -299,10 +298,15 @@
     if (!raid.took && t >= EAT_END) {
       raid.took = true;
       raid.shown = 0;
-      // Count what he holds while the pre-raid ladder is still live -
-      // those presents are real objects and stay collected, so on the
-      // post-raid ladder their goal becomes 0.
-      var won = unlockedCount(raid.from);
+      /* Count what he holds while the pre-raid ladder is still live -
+         those presents are real objects and stay collected, so on the
+         post-raid ladder their goal becomes 0.
+
+         Capped: arriving with 20,000 already banked means the count says
+         ten, but the grand prize is the whole point of the raid and he
+         has not been handed that box yet. She is always in time for the
+         last one. */
+      var won = Math.min(RAID_KEEP_MAX, unlockedCount(raid.from));
       raid.won = won;
       SG.save.data.wings = 0;
       SG.save.data.raidWon = won;
@@ -390,7 +394,11 @@
       SG.ui.text(g, 'Your ' + (raid.won || 0) + ' presents are safe. The jar is not.', CX, 400, {
         size: 16, color: '#fff', shadow: false,
       });
-      SG.ui.text(g, 'She felt bad - the last ' + left + ' cost less now. Fill it again.', CX, 424, {
+      /* Honest about the damage rather than selling it as a favour: the
+         price came down, the effort went up. */
+      SG.ui.text(g, left === 1
+        ? 'The grand prize is ' + fmt(RAID_TOTAL) + ' from here. Get going.'
+        : 'The last ' + left + ' are cheaper now. Fill it again.', CX, 424, {
         size: 13, color: SG.COLORS.green, shadow: false,
       });
       SG.ui.text(g, 'TAP TO CONTINUE', CX, 448, {
@@ -649,9 +657,14 @@
       // ---- the three that matter ----
       var totalW = CARD_W * 3 + CARD_GAP * 2;
       var cx0 = CX - totalW / 2;
+      /* Once the grand prize is the only thing left - which is where
+         the raid leaves him - "next up" and "the grand prize" are the
+         same card twice over, and two identical panels read as a bug.
+         The slot shows how far along he is instead. */
       var upNext = SG.presents.next();
-      if (upNext) card(g, cx0, 'NEXT UP', upNext, wings, '#ffd166');
-      else doneCard(g, cx0, wings);
+      if (!upNext) doneCard(g, cx0, wings);
+      else if (upNext.n === PRESENTS.length) progressCard(g, cx0, upNext, wings);
+      else card(g, cx0, 'NEXT UP', upNext, wings, '#ffd166');
       card(g, cx0 + CARD_W + CARD_GAP, 'THE BIGGER ONE', PRESENTS[4], wings, TIER_COLOR.medium);
       card(g, cx0 + (CARD_W + CARD_GAP) * 2, 'THE GRAND PRIZE', PRESENTS[9], wings, TIER_COLOR.grand);
 
@@ -721,6 +734,38 @@
     SG.ui.text(g, 'Go get your prizes', x + 86, CARD_Y + 86, {
       size: 12, color: SG.COLORS.green, align: 'left', shadow: false,
     });
+  }
+
+  // How far up the last climb he is, when there is only one left.
+  function progressCard(g, x, p, wings) {
+    var accent = '#ffd166';
+    SG.ui.panel(g, x, CARD_Y, CARD_W, CARD_H, {
+      r: 16, fill: 'rgba(10,12,30,0.84)', border: accent, borderWidth: 2.5,
+    });
+    SG.ui.text(g, 'HOW FAR', x + CARD_W / 2, CARD_Y + 17, {
+      size: 11, color: accent, shadow: false,
+    });
+
+    var frac = p.wings ? SG.clamp(wings / p.wings, 0, 1) : 1;
+    SG.ui.text(g, Math.round(frac * 100) + '%', x + CARD_W / 2, CARD_Y + 48, {
+      size: 30, color: '#fff', shadow: false,
+    });
+    SG.ui.text(g, fmt(wings) + ' of ' + fmt(p.wings), x + CARD_W / 2, CARD_Y + 74, {
+      size: 13, color: SG.COLORS.gold, shadow: false,
+    });
+
+    var bx = x + 20, bw = CARD_W - 40, by = CARD_Y + 90, bh = 10;
+    g.fillStyle = 'rgba(255,255,255,0.12)';
+    SG.roundRect(g, bx, by, bw, bh, 5);
+    g.fill();
+    if (frac > 0.01) {
+      var grd = g.createLinearGradient(bx, 0, bx + bw, 0);
+      grd.addColorStop(0, '#ff6b3d');
+      grd.addColorStop(1, '#ffe38a');
+      g.fillStyle = grd;
+      SG.roundRect(g, bx, by, Math.max(bh, bw * frac), bh, 5);
+      g.fill();
+    }
   }
 
   function backdrop(g, CX) {

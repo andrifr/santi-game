@@ -181,12 +181,14 @@ existing balances when the goals doubled; anything similar needs the
 same treatment, because those presents are real objects someone is
 already holding.
 
-**Daley's raid** (`js/presents.js`) fires once, at 9,000 wings, on the
+**Daley's raid** (`js/presents.js`) fires once, at 19,000 wings, on the
 presents screen — never mid-run, where a cutscene would take the
 controls away during a fight. She eats the whole jar and the ladder
 re-bases: `raidWon` records how many presents were collected at that
-moment, those goals become 0 so they stay collected, and the rest are
-spread across `RAID_TOTAL`. Two invariants:
+moment (capped at `RAID_KEEP_MAX`, so the grand prize is never among
+them), those goals become 0 so they stay collected, and the rest are
+spread across `RAID_TOTAL`. It triggers on *opening the screen*, so
+banking past the grand prize first does not dodge it. Two invariants:
 
 - **A collected present can never become uncollected.** It's a real
   object someone was handed. `raidWon` is counted while the pre-raid
