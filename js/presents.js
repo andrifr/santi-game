@@ -165,7 +165,16 @@
     g.fillStyle = ribbon;
     g.fillRect(cx - 3 * s, boxY, 6 * s, h);
 
-    // lid
+    /* Lid and bow are one group so they can come off together.
+       `lift` raises it and `lidRot` tips it, which is the whole of
+       opening a present. */
+    g.save();
+    if (o.lift || o.lidRot) {
+      g.translate(cx, lidY);
+      g.rotate(o.lidRot || 0);
+      g.translate(-cx, -lidY - (o.lift || 0));
+    }
+
     g.fillStyle = body;
     SG.roundRect(g, cx - lidW / 2, lidY, lidW, lidH, 2.5 * s);
     g.fill();
@@ -189,6 +198,7 @@
     g.stroke();
 
     if (tier === 'grand' && got) star(g, cx, lidY - 20 * s, 7 * s, '#fff4e0');
+    g.restore();
 
     // collected tick, so the difference survives at thumbnail size
     if (got && o.check !== false) {
@@ -263,6 +273,210 @@
   var banner = 0, bannerN = 0;
   var floaters = [];
   var raid = null;               // the cutscene, or null on a normal visit
+  var grand = null;              // the grand prize opening, likewise
+
+  /* When he actually finds out. Local midnight, and the month is
+     zero-based - 7 is August. */
+  function revealDate() { return new Date(2026, 7, 23, 0, 0, 0); }
+
+  var GRAND_DRIFT = 1.7;         // it has reached the middle by here
+  var GRAND_KNOCKS = 3;          // taps before the lid comes off
+
+  function startGrand() {
+    grand = { t: 0, knocks: 0, shake: 0, openT: -1, done: false, lidV: 0, lidR: 0 };
+    SG.audio.play('power');
+  }
+
+  function updateGrand(dt) {
+    grand.t += dt;
+    if (grand.shake > 0) grand.shake = Math.max(0, grand.shake - dt * 9);
+
+    var CX = SG.W / 2;
+
+    if (grand.openT >= 0) {
+      grand.openT += dt;
+      // the lid, once it is off, is just a thing thrown in the air
+      grand.lidV += 900 * dt;
+      grand.lidR += dt * 2.4;
+      if (!grand.done && grand.openT > 0.9) grand.done = true;
+      // once the banner is up, a tap puts the screen back to normal
+      if (grand.done && grand.openT > 1.6 && SG.input.taps.length) {
+        grand = null;
+      }
+      SG.input.taps.length = 0;
+      return;
+    }
+
+    // Nothing to press until it has arrived.
+    if (grand.t < GRAND_DRIFT) { SG.input.taps.length = 0; return; }
+
+    if (SG.input.taps.length) {
+      grand.knocks++;
+      grand.shake = 1 + grand.knocks * 0.5;
+      SG.shake(4 + grand.knocks * 3);
+      SG.audio.play(grand.knocks >= GRAND_KNOCKS ? 'wingbig' : 'pop');
+      SG.burst(CX, 300, 10 + grand.knocks * 6, {
+        colors: ['#ffb02e', '#fff4e0', '#ffe38a'],
+        speedMax: 150 + grand.knocks * 60, gravity: 500, life: 0.5,
+      });
+      if (grand.knocks >= GRAND_KNOCKS) {
+        grand.openT = 0;
+        grand.lidV = -520;                    // straight up, then gravity
+        SG.shake(20);
+        SG.burst(CX, 300, 90, {
+          colors: ['#ffb02e', '#fff4e0', '#ffe38a', '#4dd47a', '#a077ff'],
+          speedMax: 620, lift: 220, gravity: 420, life: 1.4, rMax: 8,
+        });
+      }
+    }
+    SG.input.taps.length = 0;
+  }
+
+  // d / hh : mm : ss until the day he finds out.
+  function countdown() {
+    var ms = revealDate().getTime() - Date.now();
+    if (ms <= 0) return null;
+    var sec = Math.floor(ms / 1000);
+    var d = Math.floor(sec / 86400);
+    var h = Math.floor(sec / 3600) % 24;
+    var m = Math.floor(sec / 60) % 60;
+    var ss = sec % 60;
+    var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+    return { d: d, clock: pad(h) + ':' + pad(m) + ':' + pad(ss) };
+  }
+
+  function drawGrand(g) {
+    var CX = SG.W / 2;
+    var t = grand.t;
+
+    // Everything else goes: one flat wash over the whole screen rather
+    // than fading each piece, which the inner draws would fight.
+    var dim = SG.clamp(t / 1.1, 0, 1) * 0.93;
+    g.fillStyle = 'rgba(5,6,16,' + dim + ')';
+    g.fillRect(0, 0, SG.W, SG.H);
+
+    // ...and it comes to the middle, growing as it goes.
+    var k = SG.clamp(t / GRAND_DRIFT, 0, 1);
+    k = 1 - Math.pow(1 - k, 3);
+    var fromX = CX - BAR_W / 2 + PRESENTS.length * STEP;
+    /* 3.8 and 365, not bigger: a grand present stands 59 units tall
+       above its base once the star is counted, so at 4.6 the star
+       climbed straight through the title. */
+    var x = SG.lerp(fromX, CX, k);
+    var y = SG.lerp(ICON_Y, 365, k);
+    var s = SG.lerp(tierScale('grand'), 3.8, k);
+
+    /* Once it is open the box settles down and back, out from behind the
+       banner: it is the thing the banner came out of, and burying it
+       under an opaque panel loses the only bit of staging that says so. */
+    if (grand.openT >= 0) {
+      var settle = SG.clamp(grand.openT / 0.55, 0, 1);
+      settle = 1 - Math.pow(1 - settle, 3);
+      y = SG.lerp(y, 486, settle);
+      s = SG.lerp(s, 2.1, settle);
+    }
+
+    var sh = grand.shake;
+    if (sh > 0) {
+      x += Math.sin(t * 60) * sh * 4;
+      y += Math.sin(t * 71) * sh * 2;
+    }
+
+    // a shaft of light, once it is open
+    if (grand.openT >= 0) {
+      var beam = SG.clamp(grand.openT / 0.5, 0, 1);
+      g.save();
+      var lg = g.createRadialGradient(x, y - 120 * s / 4.6, 10, x, y - 120 * s / 4.6, 460 * beam);
+      lg.addColorStop(0, 'rgba(255,232,150,' + (0.55 * beam) + ')');
+      lg.addColorStop(0.5, 'rgba(255,176,46,' + (0.18 * beam) + ')');
+      lg.addColorStop(1, 'rgba(255,176,46,0)');
+      g.fillStyle = lg;
+      g.fillRect(0, 0, SG.W, SG.H);
+      g.restore();
+    }
+
+    var open = grand.openT >= 0;
+    drawPresent(g, x, y, s, {
+      tier: 'grand', got: true, check: false,
+      lift: open ? -grand.lidV * 0.012 * 60 * grand.openT : 0,
+      lidRot: open ? grand.lidR : 0,
+    });
+
+    if (t > GRAND_DRIFT) {
+      SG.ui.text(g, 'THE GRAND PRIZE', CX, 96, {
+        size: 34, color: SG.COLORS.gold, stroke: '#1a1030', strokeWidth: 8, shadow: false,
+      });
+    }
+
+    if (!open) {
+      if (t > GRAND_DRIFT) {
+        var pulse = 0.6 + Math.sin(t * 6) * 0.4;
+        g.save();
+        g.globalAlpha = pulse;
+        SG.ui.text(g, grand.knocks === 0 ? 'TAP TO OPEN IT' : 'AGAIN', CX, 430, {
+          size: 20, color: '#fff', stroke: '#1a1030', strokeWidth: 6, shadow: false,
+        });
+        g.restore();
+        for (var i = 0; i < GRAND_KNOCKS; i++) {
+          g.fillStyle = i < grand.knocks ? SG.COLORS.gold : 'rgba(255,255,255,0.25)';
+          g.beginPath();
+          g.arc(CX - (GRAND_KNOCKS - 1) * 11 + i * 22, 460, 6, 0, Math.PI * 2);
+          g.fill();
+        }
+      }
+      return;
+    }
+
+    // ---- opened: the banner ----
+    var a = SG.clamp((grand.openT - 0.35) / 0.45, 0, 1);
+    if (a <= 0) return;
+    var pop = 1 + (1 - a) * 0.25;
+
+    g.save();
+    g.globalAlpha = a;
+    g.translate(CX, 250);
+    g.scale(pop, pop);
+
+    SG.ui.panel(g, -330, -92, 660, 184, {
+      r: 22, fill: 'rgba(10,12,30,0.92)', border: SG.COLORS.gold, borderWidth: 3,
+    });
+
+    SG.ui.text(g, "YOU'LL FIND OUT IN...", 0, -56, {
+      size: 20, color: 'rgba(255,255,255,0.8)', shadow: false,
+    });
+
+    var c = countdown();
+    if (c) {
+      SG.ui.text(g, String(c.d), -132, 4, {
+        size: 62, color: SG.COLORS.gold, stroke: '#1a1030', strokeWidth: 8, shadow: false,
+      });
+      SG.ui.text(g, c.d === 1 ? 'DAY' : 'DAYS', -132, 46, {
+        size: 15, color: 'rgba(255,255,255,0.6)', shadow: false,
+      });
+      SG.ui.text(g, c.clock, 96, 4, {
+        size: 54, color: '#fff', stroke: '#1a1030', strokeWidth: 7, shadow: false,
+      });
+      SG.ui.text(g, 'HOURS   MINUTES   SECONDS', 96, 46, {
+        size: 11, color: 'rgba(255,255,255,0.5)', shadow: false,
+      });
+    } else {
+      SG.ui.text(g, "IT'S TODAY", 0, 10, {
+        size: 54, color: SG.COLORS.gold, stroke: '#1a1030', strokeWidth: 8, shadow: false,
+      });
+    }
+    g.restore();
+
+    if (grand.openT > 1.6) {
+      g.save();
+      g.globalAlpha = 0.45 + Math.sin(t * 4) * 0.2;
+      // Above the settled box, not on top of it.
+      SG.ui.text(g, 'TAP TO CLOSE', CX, 402, {
+        size: 13, color: 'rgba(255,255,255,0.7)', shadow: false,
+      });
+      g.restore();
+    }
+  }
+
 
   /* Daley's raid, in beats. She walks on, eats the jar, apologises and
      leaves. The wings are only actually taken at EAT_END, so quitting
@@ -432,6 +646,7 @@
       banner = 0;
       popped = {};
       raid = null;
+      grand = null;
       sync();
 
       floaters = [];
@@ -468,6 +683,8 @@
       t += dt;
       sync();
 
+      if (grand) { updateGrand(dt); return; }
+
       if (raid) {
         updateRaid(dt);
         // the bar follows the jar as she empties it. updateRaid can end
@@ -491,6 +708,8 @@
         if (popped[idx] !== undefined) continue;
         if (fill >= (idx + 1) / PRESENTS.length - 0.004) {
           popped[idx] = t;
+          // The last one is not a banner, it is the whole screen.
+          if (idx === PRESENTS.length - 1) { startGrand(); return; }
           banner = 3.4;
           bannerN = idx + 1;
           SG.audio.play('wingbig');
@@ -559,10 +778,13 @@
         g.restore();
       } else {
         var nxt = SG.presents.next();
+        var cd = nxt ? null : countdown();
         SG.ui.text(g, nxt
           ? fmt(nxt.wings - wings) + ' more wings until present ' + nxt.n
-          : 'Every present unwrapped - go collect the real ones', CX, 166, {
-          size: 15, color: nxt ? 'rgba(255,255,255,0.72)' : SG.COLORS.green, shadow: false,
+          : cd
+            ? "You'll find out in  " + cd.d + 'd  ' + cd.clock
+            : 'Every present unwrapped - today is the day', CX, 166, {
+          size: 15, color: nxt ? 'rgba(255,255,255,0.72)' : SG.COLORS.gold, shadow: false,
         });
       }
 
@@ -654,6 +876,7 @@
       }
 
       if (raid) { drawRaid(g); return; }
+      if (grand) { drawGrand(g); return; }
 
       // ---- the three that matter ----
       var totalW = CARD_W * 3 + CARD_GAP * 2;
@@ -726,13 +949,14 @@
     g.stroke();
     g.lineCap = 'butt';
 
+    var c = countdown();
     SG.ui.text(g, 'TEN OF TEN', x + 86, CARD_Y + 42, {
       size: 15, color: '#fff', align: 'left', shadow: false,
     });
-    SG.ui.text(g, fmt(wings) + ' wings', x + 86, CARD_Y + 64, {
+    SG.ui.text(g, c ? c.d + (c.d === 1 ? ' day to go' : ' days to go') : 'It is today', x + 86, CARD_Y + 64, {
       size: 13, color: SG.COLORS.gold, align: 'left', shadow: false,
     });
-    SG.ui.text(g, 'Go get your prizes', x + 86, CARD_Y + 86, {
+    SG.ui.text(g, c ? c.clock : 'Go and find out', x + 86, CARD_Y + 86, {
       size: 12, color: SG.COLORS.green, align: 'left', shadow: false,
     });
   }

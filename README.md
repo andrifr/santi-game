@@ -498,6 +498,19 @@ Tunable at the top of `js/presents.js`: `RAID_AT` (when), `RAID_TOTAL`
 
 ### Reading the bar
 
+### The grand prize
+
+Earning #10 doesn't get a banner like the others — it takes the screen.
+Everything else dims away, the present drifts to the middle and grows,
+and it takes **three taps to open**, shaking harder each time. The lid
+comes off, and behind it is **"YOU'LL FIND OUT IN…"** with a live
+countdown to **23 August**, down to the second.
+
+After that the countdown stays: on the headline line and on the ALL
+COLLECTED card, every time he opens the tab. `revealDate()` at the top
+of `js/presents.js` is the date; the month is zero-based there, so 7 is
+August.
+
 Collected presents are drawn in colour with a green tick; the ones still
 to come are grey silhouettes. Opening the screen after earning one
 sweeps the bar out, pops the new present and fires confetti — the menu
