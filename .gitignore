@@ -8,3 +8,8 @@ Thumbs.db
 # someone else's recording; the game's own tunes are written in code
 # (SG.audio.melody) and voice clips are recorded by the family.
 assets/k3songs/
+
+# Audio dropped into the project root. The repo is public and Pages
+# serves it, so anything committed here is published - keep loose
+# tracks out of `git add -A`.
+/*.mp3
