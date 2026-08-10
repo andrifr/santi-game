@@ -351,7 +351,15 @@
     var br = { x: r.x + 16, y: r.y + r.h - 46, w: r.w - 32, h: 32 };
     if (m.ready) {
       var best = SG.save.best(m.id);
-      if (SG.ui.button(g, br, best ? 'PLAY · ' + best : 'PLAY', { color: m.color, size: 15, r: 10 })) {
+      var hitPlay = SG.ui.button(g, br, best ? 'PLAY · ' + best : 'PLAY', { color: m.color, size: 15, r: 10 });
+      /* The whole card starts the mode, not just the strip - a thumb
+         aimed at the art is aimed at the game. Offset by the same amount
+         the card is drawn by, since taps are in untransformed space. */
+      var hitCard = !hitPlay && SG.input.tappedRect({
+        x: r.x, y: r.y + (1 - appear) * 40 + wob, w: r.w, h: r.h,
+      });
+      if (hitPlay || hitCard) {
+        if (hitCard) SG.audio.play('select');
         g.restore();
         SG.go(m.scene, { mode: m });
         return;
@@ -487,19 +495,34 @@
         g.fill();
         break;
       case 'sim':
-        g.fillStyle = '#3a2b5c';
-        SG.roundRect(g, -32, -6, 64, 34, 5);
-        g.fill();
-        g.fillStyle = color;
-        SG.roundRect(g, -32, 2, 64, 12, 4);
-        g.fill();
-        g.fillStyle = '#fff';
-        SG.roundRect(g, -28, -12, 22, 12, 4);
-        g.fill();
-        SG.art.drawHead(g, 8, -16, 15, 'santi', 'normal');
-        g.fillStyle = color;
-        SG.roundRect(g, -34, 26, 68, 6, 3);
-        g.fill();
+        // Santi asleep - the day starts and ends here. The old icon put
+        // his head above the bed instead of on it, which read as a head
+        // floating over a purple slab.
+        g.fillStyle = '#2a2140';                       // legs
+        SG.roundRect(g, -30, 20, 7, 12, 2); g.fill();
+        SG.roundRect(g, 24, 20, 7, 12, 2); g.fill();
+
+        g.fillStyle = '#3a2b5c';                       // headboard
+        SG.roundRect(g, -38, -16, 10, 40, 4); g.fill();
+
+        g.fillStyle = '#f0e2c0';                       // mattress
+        SG.roundRect(g, -34, 4, 68, 18, 5); g.fill();
+
+        g.fillStyle = color;                           // blanket
+        SG.roundRect(g, -2, 1, 36, 21, 5); g.fill();
+        g.fillStyle = 'rgba(255,255,255,0.22)';        // turned-down fold
+        SG.roundRect(g, -2, 1, 36, 6, 3); g.fill();
+
+        g.fillStyle = '#fff';                          // pillow
+        SG.roundRect(g, -30, -1, 24, 11, 4); g.fill();
+
+        SG.art.drawHead(g, -17, -6, 13, 'santi', 'normal');
+
+        ['z', 'z', 'z'].forEach(function (z, zi) {     // out cold
+          SG.ui.text(g, z, 7 + zi * 9, -15 - zi * 10, {
+            size: 10 + zi * 2.5, color: 'rgba(255,255,255,0.7)', shadow: false,
+          });
+        });
         break;
     }
     g.restore();

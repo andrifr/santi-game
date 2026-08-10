@@ -15,6 +15,9 @@
   var DOOR_STOP = 3852;       // as far as he gets with the door shut
   var WORLD_W = 4750;
   var WALK_SPEED = 330;
+  /* Jump: 720^2 / 2*2400 = 108px up, 0.6s in the air. Enough to be
+     worth pressing and to clear Rue, not enough to reach the ceiling. */
+  var JUMP_V = 720, JUMP_G = 2400;
   var SANTI_H = 150;
   var REACH = 70;
 
@@ -365,6 +368,10 @@
       ov: {},                                 // overlay working state
       paused: false,
       musicPaused: false,      // what the music channel was last told
+      y: 0,                    // height above the floor
+      vy: 0,
+      grounded: true,
+      jumpHeld: false,         // so holding the pad doesn't auto-hop
       flash: 0,
       rue: { x: 3660, y: 0, follow: false, phase: 0 },
     };
@@ -581,11 +588,29 @@
 
     handleWorldTaps();
 
+    // Jump: the engine turns Space / ArrowUp / W into an 'up' swipe on
+    // keydown and swallows auto-repeat, so this is edge-triggered.
+    if (SG.input.takeSwipe('up')) doJump();
+
+    var rc = controlRects();
+    var padJump = heldIn(rc.jump);
+    if (padJump && !st.jumpHeld) doJump();
+    st.jumpHeld = padJump;
+
+    var padLeft = heldIn(rc.left), padRight = heldIn(rc.right);
+
     // keyboard for desktop
     var k = SG.input.keys;
-    if (k.ArrowLeft || k.KeyA) { st.targetX = null; st.pending = null; st.vx = -WALK_SPEED; }
+    if (padLeft || padRight) { st.targetX = null; st.pending = null; st.vx = (padRight ? 1 : -1) * WALK_SPEED; }
+    else if (k.ArrowLeft || k.KeyA) { st.targetX = null; st.pending = null; st.vx = -WALK_SPEED; }
     else if (k.ArrowRight || k.KeyD) { st.targetX = null; st.pending = null; st.vx = WALK_SPEED; }
     else if (st.targetX === null) st.vx = 0;
+
+    if (!st.grounded) {
+      st.vy -= JUMP_G * dt;
+      st.y += st.vy * dt;
+      if (st.y <= 0) { st.y = 0; st.vy = 0; st.grounded = true; }
+    }
 
     // walk toward a tapped point
     if (st.targetX !== null) {
@@ -626,10 +651,52 @@
     st.cam += (camTarget - st.cam) * Math.min(1, dt * 6);
   }
 
+  /* Thumb pads. Jump bottom left, walk bottom right, as asked. Lifted
+     well clear of the bottom edge: on an iPhone that strip is the
+     home-indicator gesture area and a thumb parked there has its press
+     taken by the system. They also clear the pause button, which sits
+     lower on the right. */
+  function controlRects() {
+    return {
+      jump:  { x: 30, y: SG.H - 132, w: 86, h: 78 },
+      left:  { x: SG.W - 216, y: SG.H - 132, w: 78, h: 78 },
+      right: { x: SG.W - 128, y: SG.H - 132, w: 78, h: 78 },
+    };
+  }
+
+  function heldIn(r) {
+    var ps = SG.input.pointers;
+    for (var id in ps) {
+      var p = ps[id];
+      if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) return true;
+    }
+    return false;
+  }
+
+  function onControls(x, y) {
+    var rc = controlRects();
+    for (var k in rc) {
+      var r = rc[k];
+      if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return true;
+    }
+    return false;
+  }
+
+  function doJump() {
+    if (!st.grounded || st.done || st.paused || st.overlay) return;
+    st.grounded = false;
+    st.inBed = false;
+    st.vy = JUMP_V;
+    SG.audio.play('jump');
+  }
+
   function handleWorldTaps() {
     var tap;
     while ((tap = SG.input.takeTap())) {
       if (tap.x < 0) continue;
+      // A press on a pad also lands as a tap when the finger lifts;
+      // without this he walks to wherever the pad happens to be.
+      if (onControls(tap.x, tap.y)) continue;
       var wx = tap.x + st.cam;
 
       // Rue first - she is standing in front of the furniture, and
@@ -799,11 +866,44 @@
 
     drawGuide(g, cam);
     drawHUD(g);
+    if (!st.done && !st.paused && !st.overlay) drawControls(g);
 
     if (st.bubble) drawBubble(g, cam);
     if (st.overlay) drawOverlay(g);
     if (st.paused) drawPaused(g);
     if (st.done) drawDone(g);
+  }
+
+  function drawControls(g) {
+    var rc = controlRects();
+    pad(g, rc.jump, 'up', heldIn(rc.jump));
+    pad(g, rc.left, 'left', heldIn(rc.left));
+    pad(g, rc.right, 'right', heldIn(rc.right));
+  }
+
+  function pad(g, r, dir, on) {
+    var cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+    g.save();
+    g.fillStyle = on ? 'rgba(176,112,255,0.55)' : 'rgba(10,12,26,0.42)';
+    SG.roundRect(g, r.x, r.y, r.w, r.h, 16);
+    g.fill();
+    g.strokeStyle = on ? '#d9b6ff' : 'rgba(255,255,255,0.3)';
+    g.lineWidth = 2.5;
+    g.stroke();
+
+    g.fillStyle = on ? '#fff' : 'rgba(255,255,255,0.78)';
+    var a = 15;
+    g.beginPath();
+    if (dir === 'up') {
+      g.moveTo(cx, cy - a); g.lineTo(cx + a, cy + a * 0.68); g.lineTo(cx - a, cy + a * 0.68);
+    } else if (dir === 'left') {
+      g.moveTo(cx - a, cy); g.lineTo(cx + a * 0.68, cy - a); g.lineTo(cx + a * 0.68, cy + a);
+    } else {
+      g.moveTo(cx + a, cy); g.lineTo(cx - a * 0.68, cy - a); g.lineTo(cx - a * 0.68, cy + a);
+    }
+    g.closePath();
+    g.fill();
+    g.restore();
   }
 
   function drawBackdrop(g, cam) {
@@ -1285,15 +1385,26 @@
       return;
     }
     var moving = Math.abs(st.vx) > 1;
+
+    // A shadow left on the floor, or the jump reads as the whole room
+    // sliding down rather than him going up.
+    if (st.y > 1) {
+      var f = SG.clamp(st.y / 110, 0, 1);
+      g.fillStyle = 'rgba(0,0,0,' + (0.3 - f * 0.2) + ')';
+      g.beginPath();
+      g.ellipse(x, FLOOR_Y + 2, 34 * (1 - f * 0.35), 9 * (1 - f * 0.35), 0, 0, Math.PI * 2);
+      g.fill();
+    }
+
     g.save();
     if (st.facing < 0) { g.translate(x * 2, 0); g.scale(-1, 1); }
-    SG.art.drawSanti(g, x, y, SANTI_H, st.walkPhase, {
+    SG.art.drawSanti(g, x, y - st.y, SANTI_H, st.walkPhase, {
       shirt: st.shirt.shirt,
       boxColor: st.shirt.box,
       boxInk: st.shirt.ink,
       pants: '#232a46',
-      run: moving ? 1 : 0.08,
-      bob: moving,
+      run: st.grounded ? (moving ? 1 : 0.08) : 0.3,
+      bob: moving && st.grounded,
     });
     g.restore();
     // The hairspray gag lives in its own overlay - stacked on top of the

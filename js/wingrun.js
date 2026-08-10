@@ -383,10 +383,13 @@
       var en = st.ents[e];
       en.pz = en.z;
       en.z -= dz;
-      if (en.rot !== undefined) en.rot += dt * 2.5;
 
       if (en.z < NEAR_Z - 1) { st.ents.splice(e, 1); continue; }
       if (en.gone) continue;
+
+      if (en.type === 'wing') updateWingPull(en, dt);
+      // Spin harder the harder it's being pulled.
+      if (en.rot !== undefined) en.rot += dt * (2.5 + (en.pull || 0) * 16);
 
       // Did it cross the player's plane this frame?
       if (en.pz > PLAYER_Z && en.z <= PLAYER_Z) resolveHit(en);
@@ -400,6 +403,47 @@
         spawnProp(FAR_Z + SG.rand(0, 12));
       }
     }
+  }
+
+  /* While the magnet is up - or the hot sauce, which also auto-collects
+     - wings peel out of their lane and curve into him, instead of being
+     silently hoovered at the moment they happen to arrive. Squaring the
+     ramp makes it start as a drift and finish as a snatch.
+
+     `pull` is kept separate from `lane` and `wy` rather than moving
+     them: the collect test still reads the real height, so a magnet
+     expiring mid-flight leaves the wing exactly where it would have been
+     and the wings drift back to their lane instead of jumping. */
+  var PULL_Z = 26;          // how far up the road the magnet reaches
+
+  function updateWingPull(en, dt) {
+    var want = 0;
+    if (st.magnet > 0 || st.sauce > 0) {
+      var t = SG.clamp((PULL_Z - (en.z - PLAYER_Z)) / PULL_Z, 0, 1);
+      want = t * t;
+    }
+    if (en.pull === undefined) en.pull = 0;
+    // Snatched in quickly, let go gently when the power-up ends.
+    en.pull += (want - en.pull) * Math.min(1, (want > en.pull ? 9 : 3) * dt);
+
+    if (en.pull > 0.5 && Math.random() < dt * 9) {
+      var wp = wingPos(en);
+      var sp = proj(wp.x, wp.y, en.z);
+      SG.burst(sp.x, sp.y, 1, {
+        colors: ['#ffd166', '#4dd47a', '#fff4e0'],
+        speedMax: 45, gravity: 0, rMin: 1.2, rMax: 2.6, life: 0.35,
+      });
+    }
+  }
+
+  // Where a wing actually is, once the magnet has hold of it.
+  function wingPos(en) {
+    var p = en.pull || 0;
+    var lane = en.lane === null ? 0 : LANE_X[en.lane];
+    return {
+      x: p ? SG.lerp(lane, st.laneX, p) : lane,
+      y: p ? SG.lerp(en.wy, st.y + 0.85, p) : en.wy,
+    };
   }
 
   function handleControls() {
@@ -477,7 +521,8 @@
           en.gone = true;
           st.wings++;
           st.streak++;
-          var pp = proj(LANE_X[st.lane], en.wy, PLAYER_Z);
+          var cw = wingPos(en);
+          var pp = proj(cw.x, cw.y, PLAYER_Z);
           SG.burst(pp.x, pp.y, 7, { colors: ['#ffb02e', '#fff4e0', '#ff8a3d'], speedMax: 170, gravity: 300, rMax: 4, life: 0.5 });
           if (st.streak > 0 && st.streak % 15 === 0) {
             SG.audio.play('wingbig');
@@ -866,16 +911,36 @@
     var wx = en.lane === null ? 0 : LANE_X[en.lane];
 
     if (en.type === 'wing') {
-      var p = proj(wx, en.wy, en.z);
-      var scale = p.s * 0.021;
+      var pull = en.pull || 0;
+      var wp = wingPos(en);
+      var p = proj(wp.x, wp.y, en.z);
+      var scale = p.s * 0.021 * (1 + pull * 0.3);
       if (scale < 0.07) return;
       g.save();
       g.globalAlpha = SG.clamp((FAR_Z - en.z) / 30, 0, 1);
-      // glow so they stay readable against the road at distance
-      var gr = 22 * scale;
+
+      // A tail back towards the lane it was pulled out of.
+      if (pull > 0.06) {
+        var lane = en.lane === null ? 0 : LANE_X[en.lane];
+        var from = proj(SG.lerp(lane, wp.x, 0.45), SG.lerp(en.wy, wp.y, 0.45), en.z);
+        var tg = g.createLinearGradient(from.x, from.y, p.x, p.y);
+        tg.addColorStop(0, 'rgba(77,212,122,0)');
+        tg.addColorStop(1, 'rgba(150,255,180,' + (0.5 * pull) + ')');
+        g.strokeStyle = tg;
+        g.lineWidth = Math.max(1, 7 * scale);
+        g.lineCap = 'round';
+        g.beginPath();
+        g.moveTo(from.x, from.y);
+        g.lineTo(p.x, p.y);
+        g.stroke();
+      }
+
+      // glow so they stay readable against the road at distance, going
+      // green as the magnet takes hold
+      var gr = 22 * scale * (1 + pull * 0.5);
       var rg = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, gr);
-      rg.addColorStop(0, 'rgba(255,196,90,0.55)');
-      rg.addColorStop(0.5, 'rgba(255,150,50,0.22)');
+      rg.addColorStop(0, pull > 0.15 ? 'rgba(190,255,200,0.7)' : 'rgba(255,196,90,0.55)');
+      rg.addColorStop(0.5, pull > 0.15 ? 'rgba(77,212,122,0.28)' : 'rgba(255,150,50,0.22)');
       rg.addColorStop(1, 'rgba(255,150,50,0)');
       g.fillStyle = rg;
       g.beginPath();

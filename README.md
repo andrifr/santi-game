@@ -89,6 +89,13 @@ another lane, yellow hurdles jumped, blue scaffold bars slid under.
 Wings are points; the green magnet pulls them in for 8 seconds; the hot
 sauce gives 6 seconds of speed, invincibility and auto-collect.
 
+Both of those visibly **suck the wings in** — within 26 units they peel
+out of their lane and curve into him, glowing green with a tail behind
+them and spinning harder the closer they get. The pull is held separately
+from the wing's real lane and height, so the collect test still reads the
+truth and a power-up expiring mid-flight lets them drift back rather than
+snap.
+
 **Adidas slides** give 10 seconds of double jump — one extra jump per
 trip off the ground, taken by jumping again in mid-air. The apex is
 **2.99** against the 1.5 a crate needs, so while they last a red crate
@@ -281,6 +288,17 @@ A side-on flat you walk through: bedroom, bathroom, closet, living room,
 kitchen, hall, and the street outside. Tap anywhere to walk there; tap an
 object to walk to it and use it. A guide arrow tracks the current task,
 with an edge marker pointing the way when the target is off screen.
+
+| Action | Phone | Desktop |
+| ------ | ----- | ------- |
+| Walk | ◀ ▶ pads, bottom right | ← → / A D |
+| Jump | ▲ pad, bottom left | ↑ / W / Space |
+| Go somewhere | tap it | tap it |
+
+The pads sit well clear of the bottom edge — on an iPhone that strip is
+the home-indicator gesture area — and above the pause button. A press on
+one never doubles as a tap on the room behind it, and holding the jump
+pad gives one jump, not a hop every time he lands.
 
 **No two days are the same.** Ten to fourteen jobs are drawn from a
 larger pool and shuffled, so the order changes every morning: hairspray,
