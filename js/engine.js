@@ -1343,6 +1343,7 @@
     SG.clearParticles();
     current = scenes[next.name];
     if (current.enter) current.enter(next.params);
+    if (SG.syncInstallBanner) SG.syncInstallBanner();
   }
 
   var last = 0;
@@ -1427,6 +1428,17 @@
   platform.fullscreenSupported = !!(document.documentElement.requestFullscreen ||
                                     document.documentElement.webkitRequestFullscreen);
 
+  /* Every iOS browser is WebKit underneath, but only Safari reliably has
+     Share > Add to Home Screen. Chrome, Firefox, Edge and Opera all
+     announce themselves in the UA, and an in-app browser (Instagram,
+     Facebook, Messenger) is worse still - it usually has no way to
+     install at all and no address bar to escape from. Telling those to
+     open in Safari is the only instruction that actually works. */
+  platform.iOSSafari = platform.iOS &&
+    !/CriOS|FxiOS|EdgiOS|OPiOS|OPT\/|YaBrowser|DuckDuckGo/.test(navigator.userAgent) &&
+    !/FBAN|FBAV|FB_IAB|Instagram|Line\/|Twitter|Snapchat|LinkedInApp/.test(navigator.userAgent) &&
+    /Safari/.test(navigator.userAgent);
+
   var fsBtn = document.getElementById('fsBtn');
   var rotateEl = document.getElementById('rotate');
   var a2hsEl = document.getElementById('a2hs');
@@ -1469,10 +1481,54 @@
 
   SG.initShell = function () {
     var installBtn = document.getElementById('a2hsInstall');
+    var copyBtn = document.getElementById('a2hsCopy');
     var textEl = document.getElementById('a2hsText');
     var deferred = null;
 
+    /* There is no way to open Safari from here, so the next best thing
+       is handing them the address to paste. execCommand is the fallback:
+       the async clipboard API needs a secure context and permission, and
+       an in-app browser is exactly where it tends not to be granted. */
+    copyBtn.addEventListener('click', function () {
+      var url = location.href;
+      var ok = false;
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = url;
+        ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed;top:-1000px;opacity:0';
+        document.body.appendChild(ta);
+        ta.select();
+        ta.setSelectionRange(0, url.length);
+        ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+      } catch (e) { /* fall through to the async API */ }
+
+      var done = function () { copyBtn.textContent = 'Copied'; };
+      if (ok) done();
+      else if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done, function () {
+          copyBtn.textContent = 'Copy failed';
+        });
+      } else {
+        copyBtn.textContent = 'Copy failed';
+      }
+    });
+
+    /* Shown on the menu and nowhere else. It sits across the bottom of
+       the screen, which in a mode is where the thumb pads are and on the
+       menu is the row of PLAY buttons - following him into a game to
+       cover the controls is not a fair trade for a hint. */
+    var offer = false;
+    function sync() {
+      var sc = SG.scene();
+      var onMenu = !sc || sc.name === 'menu';
+      a2hsEl.classList.toggle('hidden', !(offer && onMenu && !save.data.seenA2HS));
+    }
+    SG.syncInstallBanner = sync;
+
     function dismiss(remember) {
+      offer = false;
       a2hsEl.classList.add('hidden');
       if (remember) { save.data.seenA2HS = true; save.write(); }
     }
@@ -1488,7 +1544,8 @@
       textEl.innerHTML = 'Install it and it opens like an app - fullscreen, ' +
                          'its own icon, and it works without a signal.';
       installBtn.classList.remove('hidden');
-      a2hsEl.classList.remove('hidden');
+      offer = true;
+      sync();
     });
 
     installBtn.addEventListener('click', function () {
@@ -1504,9 +1561,18 @@
     window.addEventListener('appinstalled', function () { dismiss(true); });
 
     /* iOS has no install API at all - Safari only has Share > Add to
-       Home Screen - so the most that can be done is say where it is. */
+       Home Screen - so the most that can be done is say where it is.
+       And in anything that is not Safari, even that instruction is
+       wrong, so send them to Safari first. */
     if (platform.iOS && !platform.standalone && !save.data.seenA2HS) {
-      a2hsEl.classList.remove('hidden');
+      if (!platform.iOSSafari) {
+        textEl.innerHTML = 'Open this page in <b>Safari</b> first — this browser ' +
+                           "can't add it to your home screen. Then tap <b>Share</b> " +
+                           '<span class="share-glyph"></span> and <b>Add to Home Screen</b>.';
+        copyBtn.classList.remove('hidden');
+      }
+      offer = true;
+      sync();
     }
 
     document.getElementById('a2hsClose').addEventListener('click', function () {

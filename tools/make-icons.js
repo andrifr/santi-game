@@ -1,6 +1,22 @@
 // Generates the PWA / apple-touch icons as real PNG files.
-// No dependencies - hand-rolled PNG encoder on top of node's zlib.
+// No dependencies - hand-rolled PNG codec on top of node's zlib.
 // Run:  node tools/make-icons.js
+//
+// The icon is a photo of Santi. `assets/icons/source-icon.png` is the
+// master; replace that and re-run this to change every icon at once.
+// (The .jpeg beside it is the original off a phone - node has no JPEG
+// decoder, so it was converted once through a browser canvas.)
+//
+// Two shapes come out of it:
+//
+//   icon-192 / icon-512 / apple-touch-icon   the photo, full bleed
+//   icon-512-maskable                        the photo inset on a dark
+//                                            ground
+//
+// The maskable one exists because Android crops a maskable icon to
+// whatever shape the launcher likes - a circle on most - and only the
+// middle 80% is guaranteed to survive. Full bleed there would cut the
+// top of his hair off.
 const zlib = require('zlib');
 const fs = require('fs');
 const path = require('path');
@@ -49,75 +65,177 @@ function encodePNG(w, h, rgba) {
   ]);
 }
 
-// 5x7 bitmap of the letter S
-const GLYPH_S = [
-  '.###.',
-  '#...#',
-  '#....',
-  '.###.',
-  '....#',
-  '#...#',
-  '.###.',
-];
+function decodePNG(buf) {
+  if (buf.readUInt32BE(0) !== 0x89504e47) throw new Error('not a png');
+  let pos = 8, w = 0, h = 0, depth = 0, color = 0, interlace = 0;
+  const idat = [];
+  let pal = null, trns = null;
 
-function makeIcon(size) {
-  const px = Buffer.alloc(size * size * 4);
-  const set = (x, y, r, g, b, a) => {
-    if (x < 0 || y < 0 || x >= size || y >= size) return;
-    const i = (y * size + x) * 4;
-    const na = a / 255;
-    px[i]     = Math.round(px[i]     * (1 - na) + r * na);
-    px[i + 1] = Math.round(px[i + 1] * (1 - na) + g * na);
-    px[i + 2] = Math.round(px[i + 2] * (1 - na) + b * na);
-    px[i + 3] = Math.max(px[i + 3], a);
-  };
-
-  // background: deep navy -> plum diagonal gradient, full bleed (maskable-safe)
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const t = (x / size) * 0.45 + (y / size) * 0.55;
-      set(x, y, Math.round(14 + 40 * t), Math.round(16 + 14 * t), Math.round(38 + 48 * t), 255);
-    }
+  while (pos < buf.length) {
+    const len = buf.readUInt32BE(pos);
+    const type = buf.toString('ascii', pos + 4, pos + 8);
+    const data = buf.slice(pos + 8, pos + 8 + len);
+    if (type === 'IHDR') {
+      w = data.readUInt32BE(0); h = data.readUInt32BE(4);
+      depth = data[8]; color = data[9]; interlace = data[12];
+    } else if (type === 'PLTE') pal = data;
+    else if (type === 'tRNS') trns = data;
+    else if (type === 'IDAT') idat.push(data);
+    else if (type === 'IEND') break;
+    pos += 12 + len;
   }
 
-  // warm glow behind the mark
-  const cx = size / 2, cy = size * 0.48, glow = size * 0.42;
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const d = Math.hypot(x - cx, y - cy) / glow;
-      if (d < 1) set(x, y, 255, 130, 30, Math.round(110 * Math.pow(1 - d, 2.2)));
-    }
-  }
+  if (depth !== 8) throw new Error('unsupported bit depth ' + depth);
+  if (interlace !== 0) throw new Error('interlaced pngs not supported');
 
-  // solid orange disc
-  const rDisc = size * 0.30;
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const d = Math.hypot(x - cx, y - cy);
-      const a = Math.max(0, Math.min(1, rDisc - d + 0.5));
-      if (a > 0) set(x, y, 255, 176, 46, Math.round(255 * a));
-    }
-  }
+  const CH = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 }[color];
+  if (!CH) throw new Error('unsupported colour type ' + color);
 
-  // "S" punched out in dark ink
-  const cell = Math.max(1, Math.round(size * 0.072));
-  const gw = 5 * cell, gh = 7 * cell;
-  const gx = Math.round(cx - gw / 2), gy = Math.round(cy - gh / 2);
-  for (let r = 0; r < 7; r++) {
-    for (let c = 0; c < 5; c++) {
-      if (GLYPH_S[r][c] !== '#') continue;
-      for (let y = 0; y < cell; y++) {
-        for (let x = 0; x < cell; x++) set(gx + c * cell + x, gy + r * cell + y, 23, 18, 10, 255);
+  const raw = zlib.inflateSync(Buffer.concat(idat));
+  const stride = w * CH;
+  const out = Buffer.alloc(h * stride);
+
+  // undo per-row filters
+  for (let y = 0; y < h; y++) {
+    const filter = raw[y * (stride + 1)];
+    const src = raw.slice(y * (stride + 1) + 1, y * (stride + 1) + 1 + stride);
+    const cur = out.slice(y * stride, (y + 1) * stride);
+    const prev = y > 0 ? out.slice((y - 1) * stride, y * stride) : null;
+    for (let i = 0; i < stride; i++) {
+      const a = i >= CH ? cur[i - CH] : 0;
+      const b = prev ? prev[i] : 0;
+      const c = prev && i >= CH ? prev[i - CH] : 0;
+      let v = src[i];
+      switch (filter) {
+        case 0: break;
+        case 1: v += a; break;
+        case 2: v += b; break;
+        case 3: v += (a + b) >> 1; break;
+        case 4: {
+          const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+          v += pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+          break;
+        }
+        default: throw new Error('bad filter ' + filter);
       }
+      cur[i] = v & 0xff;
     }
   }
 
-  return encodePNG(size, size, px);
+  // normalise to RGBA
+  const rgba = Buffer.alloc(w * h * 4);
+  for (let i = 0, p = 0; i < w * h; i++, p += 4) {
+    if (color === 6) { out.copy(rgba, p, i * 4, i * 4 + 4); }
+    else if (color === 2) { rgba[p] = out[i * 3]; rgba[p + 1] = out[i * 3 + 1]; rgba[p + 2] = out[i * 3 + 2]; rgba[p + 3] = 255; }
+    else if (color === 0) { rgba[p] = rgba[p + 1] = rgba[p + 2] = out[i]; rgba[p + 3] = 255; }
+    else if (color === 4) { rgba[p] = rgba[p + 1] = rgba[p + 2] = out[i * 2]; rgba[p + 3] = out[i * 2 + 1]; }
+    else if (color === 3) {
+      const idx = out[i];
+      rgba[p] = pal[idx * 3]; rgba[p + 1] = pal[idx * 3 + 1]; rgba[p + 2] = pal[idx * 3 + 2];
+      rgba[p + 3] = trns && idx < trns.length ? trns[idx] : 255;
+    }
+  }
+  return { w, h, data: rgba };
 }
 
-const outDir = path.join(__dirname, '..', 'assets', 'icons');
-fs.mkdirSync(outDir, { recursive: true });
-for (const [name, size] of [['icon-192.png', 192], ['icon-512.png', 512], ['apple-touch-icon.png', 180]]) {
-  fs.writeFileSync(path.join(outDir, name), makeIcon(size));
-  console.log('wrote', name, size + 'px');
+function resize(src, tw, th) {
+  const dst = Buffer.alloc(tw * th * 4);
+  const xr = src.w / tw, yr = src.h / th;
+  for (let y = 0; y < th; y++) {
+    const y0 = Math.floor(y * yr), y1 = Math.min(src.h, Math.max(y0 + 1, Math.ceil((y + 1) * yr)));
+    for (let x = 0; x < tw; x++) {
+      const x0 = Math.floor(x * xr), x1 = Math.min(src.w, Math.max(x0 + 1, Math.ceil((x + 1) * xr)));
+      let r = 0, g = 0, b = 0, a = 0, n = 0;
+      for (let sy = y0; sy < y1; sy++) {
+        for (let sx = x0; sx < x1; sx++) {
+          const i = (sy * src.w + sx) * 4;
+          const al = src.data[i + 3] / 255;
+          // premultiply so transparent pixels don't bleed their colour in
+          r += src.data[i] * al; g += src.data[i + 1] * al; b += src.data[i + 2] * al;
+          a += src.data[i + 3];
+          n++;
+        }
+      }
+      const o = (y * tw + x) * 4;
+      const am = a / n;
+      const un = am > 0.5 ? 255 / am : 0;
+      dst[o] = Math.min(255, Math.round((r / n) * un));
+      dst[o + 1] = Math.min(255, Math.round((g / n) * un));
+      dst[o + 2] = Math.min(255, Math.round((b / n) * un));
+      dst[o + 3] = Math.round(am);
+    }
+  }
+  return dst;
+}
+
+// Centre-crop to a square first, so a future replacement can be any shape.
+function square(src) {
+  const side = Math.min(src.w, src.h);
+  const ox = Math.floor((src.w - side) / 2), oy = Math.floor((src.h - side) / 2);
+  const out = Buffer.alloc(side * side * 4);
+  for (let y = 0; y < side; y++) {
+    src.data.copy(out, y * side * 4,
+      ((y + oy) * src.w + ox) * 4, ((y + oy) * src.w + ox + side) * 4);
+  }
+  return { w: side, h: side, data: out };
+}
+
+// Flatten onto the app's own background - a photo has no alpha, but a
+// replacement might, and a launcher icon should never be see-through.
+const BG = [11, 13, 26];
+
+function flatten(px, size) {
+  for (let i = 0; i < size * size; i++) {
+    const a = px[i * 4 + 3] / 255;
+    if (a === 1) continue;
+    for (let c = 0; c < 3; c++) {
+      px[i * 4 + c] = Math.round(px[i * 4 + c] * a + BG[c] * (1 - a));
+    }
+    px[i * 4 + 3] = 255;
+  }
+  return px;
+}
+
+function fullBleed(src, size) {
+  return flatten(resize(src, size, size), size);
+}
+
+// The photo at `inset` of the width, centred on the flat background.
+function masked(src, size, inset) {
+  const inner = Math.round(size * inset);
+  const small = resize(src, inner, inner);
+  const px = Buffer.alloc(size * size * 4);
+  for (let i = 0; i < size * size; i++) {
+    px[i * 4] = BG[0]; px[i * 4 + 1] = BG[1]; px[i * 4 + 2] = BG[2]; px[i * 4 + 3] = 255;
+  }
+  const off = Math.round((size - inner) / 2);
+  for (let y = 0; y < inner; y++) {
+    small.copy(px, ((y + off) * size + off) * 4, y * inner * 4, (y + 1) * inner * 4);
+  }
+  return flatten(px, size);
+}
+
+const iconDir = path.join(__dirname, '..', 'assets', 'icons');
+const srcPath = path.join(iconDir, 'source-icon.png');
+if (!fs.existsSync(srcPath)) {
+  console.error('missing ' + srcPath + ' - that file is the master icon');
+  process.exit(1);
+}
+
+const src = square(decodePNG(fs.readFileSync(srcPath)));
+console.log('source ' + src.w + 'x' + src.h);
+
+const JOBS = [
+  ['icon-192.png', 192, null],
+  ['icon-512.png', 512, null],
+  ['apple-touch-icon.png', 180, null],
+  ['icon-512-maskable.png', 512, 0.78],
+];
+
+for (const [name, size, inset] of JOBS) {
+  const px = inset ? masked(src, size, inset) : fullBleed(src, size);
+  const out = path.join(iconDir, name);
+  fs.writeFileSync(out, encodePNG(size, size, px));
+  console.log(name + '  ' + size + 'x' + size + '  ' +
+              (fs.statSync(out).size / 1024).toFixed(1) + 'kB');
 }

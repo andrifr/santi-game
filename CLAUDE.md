@@ -35,6 +35,14 @@ Both are dependency-free (hand-rolled PNG codec on node's zlib). Run
 alpha bounding box and downscales the long edge to 512px (currently
 22MB → 2.2MB). Add new art to its `JOBS` list.
 
+`make-icons.js` builds every launcher icon from
+`assets/icons/source-icon.png` — a photo of Santi. Replace that one file
+and re-run it. It also emits `icon-512-maskable.png` inset on the app
+background, because Android crops a maskable icon to the launcher's own
+shape and only the middle 80% is guaranteed to survive; full bleed cuts
+the top of his hair off. Node has no JPEG decoder, which is why the
+`.jpeg` original had to be converted through a browser canvas once.
+
 Syntax check before committing — nothing else will catch a typo:
 
 ```bash

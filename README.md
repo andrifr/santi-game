@@ -68,7 +68,12 @@ installable PWA — Chrome only offers an install for a site that can
 answer a navigation while offline.
 
 On **iPhone** there is no install API at all; Safari only has Share →
-Add to Home Screen, so the banner there can do no more than point at it.
+Add to Home Screen, so the banner there can do no more than point at it
+— and only Safari has it. Chrome, Firefox, Edge and any in-app browser
+(Instagram, Facebook, Messenger) are told to open the page in Safari
+first, with a **Copy link** button, because there is no way to open
+Safari for them. One case can't be detected: a link opened in Safari
+View Controller from another app reports itself as Safari exactly.
 
 Either way the service worker means the game **plays with no signal**
 once it has been opened once. Music is the exception and is never cached
@@ -315,9 +320,11 @@ with an edge marker pointing the way when the target is off screen.
 | Use the thing you're at | **USE** pad, or tap it | **E**, or click it |
 | Go somewhere | tap it | click it |
 
-Standing in reach of anything puts an **E · INTERACT** prompt at the
-bottom of the screen, naming what it would act on — or, on a phone,
-lights the **USE** pad beside the jump arrow. E prefers the current
+Standing in reach of anything **makes it glow yellow** and puts an
+**E · INTERACT** prompt at the bottom of the screen naming it — or, on a
+phone, lights the **USE** pad beside the jump arrow. The glow is the
+answer to "which one": the prompt names the object, but a room with a
+plant in front of a counter still leaves you guessing without it. E prefers the current
 task's target over whatever is nearest, so it always moves the day along
 when it can. It runs through the same code a click does, so clicking
 still works exactly as before. The prompt is hidden once a touch is seen

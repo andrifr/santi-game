@@ -584,6 +584,27 @@
     if (st.done) { handleDoneTaps(); return; }
     if (st.overlay) { updateOverlay(dt); return; }
 
+    // A phone taps the thing directly, so the E prompt is meaningless
+    // there and the USE pad is what replaces it. Checked first: both of
+    // the blocks below depend on knowing which one this is.
+    if (!st.sawTouch) {
+      for (var pid in SG.input.pointers) {
+        if (SG.input.pointers[pid].type === 'touch') { st.sawTouch = true; break; }
+      }
+    }
+
+    /* The touch twin of E, claimed BEFORE handleWorldTaps. takeTap()
+       shifts a tap off the queue and handleWorldTaps drops the ones that
+       landed on a control, so anything checked after it never sees them
+       - which is exactly why this button did nothing. A tap here is
+       consumed either way, so a miss cannot fall through to the room. */
+    if (st.sawTouch && SG.input.tappedRect(controlRects().use)) {
+      var touchNear = reachObject();
+      if (touchNear) useObject(touchNear);
+      else SG.audio.play('back');
+      return;                       // useObject may have opened an overlay
+    }
+
     handleWorldTaps();
 
     // Jump: the engine turns Space / ArrowUp / W into an 'up' swipe on
@@ -601,25 +622,10 @@
     }
     st.eHeld = eDown;
 
-    // The E prompt is meaningless on a phone, where you tap the thing.
-    if (!st.sawTouch) {
-      for (var pid in SG.input.pointers) {
-        if (SG.input.pointers[pid].type === 'touch') { st.sawTouch = true; break; }
-      }
-    }
-
     var rc = controlRects();
     var padJump = heldIn(rc.jump);
     if (padJump && !st.jumpHeld) doJump();
     st.jumpHeld = padJump;
-
-    // The touch twin of E. A tap, not a hold - and it consumes the tap
-    // either way, so a miss never falls through to the room behind it.
-    if (st.sawTouch && SG.input.tappedRect(rc.use)) {
-      var touchNear = reachObject();
-      if (touchNear) useObject(touchNear);
-      else SG.audio.play('back');
-    }
 
     var padLeft = heldIn(rc.left), padRight = heldIn(rc.right);
 
@@ -1089,6 +1095,34 @@
     var x = o.x - cam;
     if (x < -260 || x > SG.W + 260) return;
     var base = FLOOR_Y;
+
+    /* The one thing E or USE would act on gets a glow. Without it the
+       prompt names something the player then has to find, and standing
+       between a plant and a counter is a guess. Drawn under the object
+       so it reads as light coming off it rather than a box around it. */
+    if (o === reachObject()) {
+      var top = base - (o.onWall ? 262 : 150);
+      var cy = (top + base) / 2;
+      var rw = Math.max(o.w, 70) * 0.85, rh = (base - top) * 0.62;
+      var pulse = 0.55 + Math.sin(st.t * 5) * 0.18;
+      g.save();
+      var gl = g.createRadialGradient(x, cy, 4, x, cy, Math.max(rw, rh));
+      gl.addColorStop(0, 'rgba(255,214,80,' + (0.42 * pulse) + ')');
+      gl.addColorStop(0.55, 'rgba(255,196,50,' + (0.18 * pulse) + ')');
+      gl.addColorStop(1, 'rgba(255,196,50,0)');
+      g.fillStyle = gl;
+      g.beginPath();
+      g.ellipse(x, cy, Math.max(rw, rh), Math.max(rw, rh), 0, 0, Math.PI * 2);
+      g.fill();
+      // a ring on the floor, so it is unambiguous which one it is
+      g.strokeStyle = 'rgba(255,214,80,' + pulse + ')';
+      g.lineWidth = 3;
+      g.beginPath();
+      g.ellipse(x, base + 5, Math.max(o.w * 0.55, 34), 12, 0, 0, Math.PI * 2);
+      g.stroke();
+      g.restore();
+    }
+
     g.save();
 
     switch (o.kind) {

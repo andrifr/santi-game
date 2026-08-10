@@ -21,7 +21,7 @@
    a lot of somebody's phone to spend without asking. Offline play works,
    offline play is just quiet.
    ============================================================= */
-var CACHE = 'santi-v93';
+var CACHE = 'santi-v97';
 
 // Enough to answer a cold navigation offline. Everything else lands in
 // the cache as it is fetched.
