@@ -34,6 +34,25 @@
   var LANE_SNAP = 11;       // how fast the player slides between lanes
   var HURDLE_H = 0.78;      // must be above this to clear
   var LOWBAR_BOTTOM = 1.02; // must be sliding to pass under
+  var BARRIER_H = 1.5;      // a crate needs real height
+
+  /* Air Jordans: one extra jump per trip off the ground, for 10s.
+     Measured, not derived: a single jump tops out at 1.46, because the
+     continuous apex of 1.53 is never actually sampled at 60fps. That is
+     under BARRIER_H, so a crate has never been jumpable however well
+     timed - lane change or nothing. A second jump at the top reaches
+     2.92, which clears one with room, and is the whole point of the
+     pickup. Raising JUMP_V would make crates jumpable for free and take
+     that away, so tune the shoes, not the jump. */
+  var JORDAN_TIME = 10;
+
+  // ---- where the road starts -------------------------------------
+  /* Patterns spawn at FAR_Z and have to travel to the player, so
+     spawning alone left (FAR_Z - PLAYER_Z) / SPEED_START seconds - about
+     seven - of empty street at the top of every run. The road is seeded
+     from here instead, which is about 1.7s out. */
+  var FIRST_Z = 34;
+  var SPAWN_STEP = 11 + SPEED_START * 0.36;   // the spawner's own spacing
 
   // ---- state -----------------------------------------------------
   var st;
@@ -42,7 +61,7 @@
     st = {
       phase: 'ready',       // ready | run | dead | paused
       t: 0,
-      countdown: 3.0,
+      countdown: 1.8,       // long enough to read "2, 1", short enough to go
       travel: 0,
       speed: SPEED_START,
       score: 0,
@@ -56,6 +75,8 @@
       runPhase: 0,
       magnet: 0,
       sauce: 0,
+      jordans: 0,
+      airJumps: 0,          // extra jumps used since he last left the ground
       invuln: 0,
       ents: [],
       props: [],
@@ -71,6 +92,23 @@
     for (var i = 0; i < 26; i++) {
       spawnProp(NEAR_Z + Math.random() * (FAR_Z - NEAR_Z));
     }
+    seedRoad();
+  }
+
+  /* Fill the road he can already see, at the spacing the spawner would
+     have produced, so the rhythm is seamless from the first pattern on.
+     The first one is wings only - the opening beat of a run should be
+     worth having, not something to dodge. */
+  function seedRoad() {
+    var z = FIRST_Z;
+    var first = true;
+    while (z < FAR_Z) {
+      spawnPattern(z, first ? PATTERNS[0] : null);
+      first = false;
+      z += SPAWN_STEP;
+    }
+    // Hand over to the spawner mid-rhythm rather than restarting it.
+    st.distToSpawn = SPAWN_STEP - (FAR_Z - (z - SPAWN_STEP));
   }
 
   // ---- side scenery ---------------------------------------------
@@ -168,20 +206,25 @@
     },
   ];
 
-  function spawnPattern() {
-    var z = FAR_Z;
+  function spawnPattern(z, forced) {
+    if (z === undefined) z = FAR_Z;
     // Ease the player in: only gentle patterns for the first stretch.
     var pool;
     if (st.travel < 220) pool = PATTERNS.slice(0, 3);
     else if (st.travel < 700) pool = PATTERNS.slice(0, 6);
     else pool = PATTERNS;
-    SG.pick(pool)(z);
+    (forced || SG.pick(pool))(z);
 
     if (Math.random() < 0.08) {
       st.ents.push({ type: 'magnet', lane: SG.randInt(0, 2), z: z + SG.rand(10, 20), wy: 1.1, gone: false, pz: 0, rot: 0 });
     }
     if (st.travel > 260 && Math.random() < 0.07) {
       st.ents.push({ type: 'sauce', lane: SG.randInt(0, 2), z: z + SG.rand(8, 22), wy: 1.1, gone: false, pz: 0, rot: 0 });
+    }
+    // No distance gate on these: crates are in the pool from the very
+    // first stretch, so the answer to them has to be too.
+    if (Math.random() < 0.07) {
+      st.ents.push({ type: 'jordans', lane: SG.randInt(0, 2), z: z + SG.rand(8, 20), wy: 1.05, gone: false, pz: 0, rot: 0 });
     }
   }
 
@@ -263,6 +306,7 @@
         st.y = 0;
         st.vy = 0;
         st.grounded = true;
+        st.airJumps = 0;
         var lp = proj(st.laneX, 0, PLAYER_Z);
         SG.burst(lp.x, lp.y, 6, { colors: ['#8b7f6b'], speedMax: 120, gravity: 500, rMax: 4 });
       }
@@ -280,6 +324,12 @@
 
     st.runPhase += dt * (7 + st.speed * 0.32);
     if (st.magnet > 0) st.magnet -= dt;
+
+    if (st.jordans > 0) {
+      var wasJ = st.jordans;
+      st.jordans -= dt;
+      if (wasJ > 2 && st.jordans <= 2) popup('JORDANS RUNNING OUT!', '#e8202a');
+    }
     if (st.invuln > 0) st.invuln -= dt;
     if (st.sauce > 0) {
       var was = st.sauce;
@@ -359,8 +409,23 @@
   }
 
   function jump() {
-    if (!st.grounded) return;
+    if (!st.grounded) {
+      // Air Jordans: one extra jump per trip off the ground.
+      if (st.jordans > 0 && st.airJumps < 1) {
+        st.airJumps++;
+        st.slide = 0;
+        st.vy = JUMP_V;
+        SG.audio.play('power');
+        var ap = proj(st.laneX, st.y, PLAYER_Z);
+        SG.burst(ap.x, ap.y, 14, {
+          colors: ['#e8202a', '#fff4e0', '#2a2a33'],
+          speedMax: 210, gravity: 460, rMax: 4, life: 0.4,
+        });
+      }
+      return;
+    }
     st.grounded = false;
+    st.airJumps = 0;
     st.slide = 0;
     st.vy = JUMP_V;
 
@@ -424,6 +489,18 @@
       return;
     }
 
+    if (en.type === 'jordans') {
+      if (sameLane || Math.abs(LANE_X[st.lane] - LANE_X[en.lane]) < 2) {
+        en.gone = true;
+        st.jordans = JORDAN_TIME;
+        SG.audio.play('power');
+        popup('AIR JORDANS - DOUBLE JUMP!', '#e8202a');
+        var jp = proj(LANE_X[en.lane], en.wy, PLAYER_Z);
+        SG.burst(jp.x, jp.y, 22, { colors: ['#e8202a', '#fff4e0', '#2a2a33'], speedMax: 280, gravity: 220 });
+      }
+      return;
+    }
+
     if (en.type === 'sauce') {
       if (sameLane || Math.abs(LANE_X[st.lane] - LANE_X[en.lane]) < 2) {
         en.gone = true;
@@ -448,7 +525,7 @@
       if (playerHeadroom() < LOWBAR_BOTTOM) return;
       die();
     } else if (en.type === 'barrier') {
-      if (st.y > 1.5) return;               // a really good jump clears a crate
+      if (st.y > BARRIER_H) return;         // a perfect jump, or any Jordans one
       die();
     }
   }
@@ -826,6 +903,73 @@
       return;
     }
 
+    if (en.type === 'jordans') {
+      var kp = proj(wx, en.wy, en.z);
+      var ks = kp.s * 0.021;
+      if (ks < 0.09) return;
+      g.save();
+      g.translate(kp.x, kp.y);
+      g.rotate(Math.sin(en.rot) * 0.16);
+      g.scale(ks, ks);
+
+      g.fillStyle = 'rgba(232,32,42,0.22)';
+      g.beginPath(); g.arc(0, -2, 34, 0, Math.PI * 2); g.fill();
+
+      g.strokeStyle = '#160d10';
+      g.lineWidth = 2.2;
+      g.lineJoin = 'round';
+
+      // high-top upper, side on
+      g.fillStyle = '#22222b';
+      g.beginPath();
+      g.moveTo(-20, 8);
+      g.lineTo(-20, -14);
+      g.quadraticCurveTo(-20, -20, -13, -20);
+      g.lineTo(-7, -20);
+      g.quadraticCurveTo(-4, -7, 8, -3);
+      g.quadraticCurveTo(20, 0, 22, 8);
+      g.closePath();
+      g.fill(); g.stroke();
+
+      // red ankle collar
+      g.fillStyle = '#e8202a';
+      g.beginPath();
+      g.moveTo(-20, -14);
+      g.quadraticCurveTo(-20, -20, -13, -20);
+      g.lineTo(-8, -20);
+      g.lineTo(-8, -15);
+      g.lineTo(-20, -15);
+      g.closePath();
+      g.fill();
+
+      // swoosh
+      g.fillStyle = '#e8202a';
+      g.beginPath();
+      g.moveTo(-15, 3);
+      g.quadraticCurveTo(-2, 6, 15, -4);
+      g.lineTo(15, 1);
+      g.quadraticCurveTo(-2, 11, -15, 7);
+      g.closePath();
+      g.fill();
+
+      // sole
+      g.fillStyle = '#fff4e0';
+      SG.roundRect(g, -22, 6, 45, 9, 4);
+      g.fill(); g.stroke();
+
+      // laces
+      g.strokeStyle = '#fff4e0';
+      g.lineWidth = 1.8;
+      for (var lc = 0; lc < 3; lc++) {
+        g.beginPath();
+        g.moveTo(-6 + lc * 5, -15 + lc * 4);
+        g.lineTo(0 + lc * 5, -12 + lc * 4);
+        g.stroke();
+      }
+      g.restore();
+      return;
+    }
+
     if (en.type === 'magnet') {
       var mp = proj(wx, en.wy, en.z);
       var ms = mp.s * 0.02;
@@ -947,6 +1091,9 @@
       shirt: SG.COLORS.purple,
       boxColor: SG.COLORS.red,
       pants: '#232a46',
+      // He's visibly wearing them while they last - forearms and shoes
+      // are drawn, not taken from the portrait, so this is just a colour.
+      shoe: st.jordans > 0 ? '#e8202a' : undefined,
       run: st.grounded && !sliding ? 1 : 0.25,
       face: 'santi',
     });
@@ -980,6 +1127,7 @@
     var bar = 0;
     if (st.sauce > 0) { powerBar(g, bar++, st.sauce / 6, SG.COLORS.sauce, 'HOT SAUCE', st.sauce); }
     if (st.magnet > 0) { powerBar(g, bar++, st.magnet / 8, '#4dd47a', 'MAGNET', st.magnet); }
+    if (st.jordans > 0) { powerBar(g, bar++, st.jordans / JORDAN_TIME, '#e8202a', 'AIR JORDANS', st.jordans); }
 
     // popups
     for (var i = 0; i < st.popups.length; i++) {

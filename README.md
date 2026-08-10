@@ -89,6 +89,17 @@ another lane, yellow hurdles jumped, blue scaffold bars slid under.
 Wings are points; the green magnet pulls them in for 8 seconds; the hot
 sauce gives 6 seconds of speed, invincibility and auto-collect.
 
+**Air Jordans** give 10 seconds of double jump — one extra jump per trip
+off the ground, taken by jumping again in mid-air. That reaches 2.92
+against the 1.5 a crate needs, so while they last a red crate can be
+jumped instead of dodged. A single jump tops out at 1.46 and never
+clears one, so the shoes are the only way over.
+
+The run opens with the road already dressed: the first wings arrive
+about 1.7 seconds in and the countdown is 1.8, so it's playable 3½
+seconds after the mode loads. Spawning only at the far plane meant a
+seven-second empty street before anything reached you.
+
 **Pickleball**
 
 Drag anywhere to move — your finger maps 1:1 onto the court. The swing is
