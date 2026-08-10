@@ -149,6 +149,20 @@
 
   function devSay(msg) { dev.note = msg; dev.noteT = 2.6; }
 
+  /* Straight to the re-based ladder without sitting through her. The
+     wing count is a parameter because the interesting moment is not the
+     empty jar, it is one wing short of the grand prize. */
+  function devPostRaid(wings) {
+    var kept = SG.presents.keepMax;
+    SG.save.data.wings = Math.max(0, Math.round(wings) || 0);
+    SG.save.data.raid = true;
+    SG.save.data.raidWon = kept;
+    SG.save.data.presentsSeen = kept;
+    SG.save.data.econ2 = true;
+    SG.save.write();
+    devSay('post-raid, ' + kept + ' kept, ' + fmtN(SG.save.data.wings) + ' wings');
+  }
+
   function drawDevTools(g) {
     var CX = SG.W / 2;
 
@@ -189,8 +203,11 @@
       if (SG.ui.button(g, r, p.label, { color: '#3a4270', text: '#fff', size: 14, r: 10 })) devSet(p.wings);
     }
 
-    if (SG.ui.button(g, { x: CX - 310 + 24, y: 264, w: 186, h: 40 }, 'TYPE A NUMBER', {
-      color: SG.COLORS.gold, size: 14, r: 10,
+    var rw = 134, rgap = 12;
+    var rx = CX - (rw * 4 + rgap * 3) / 2;
+
+    if (SG.ui.button(g, { x: rx, y: 264, w: rw, h: 40 }, 'TYPE NUMBER', {
+      color: SG.COLORS.gold, size: 13, r: 10,
     })) {
       var answer = window.prompt('Set chicken wings to:', String(SG.save.data.wings || 0));
       if (answer !== null) {
@@ -201,22 +218,20 @@
       SG.input.releaseAll();     // the dialog swallows the release
     }
 
-    if (SG.ui.button(g, { x: CX - 93, y: 264, w: 186, h: 40 }, 'AFTER THE RAID', {
-      color: '#a077ff', text: '#17120a', size: 14, r: 10,
-    })) {
-      // Straight to the re-based ladder, without sitting through her.
-      var kept = SG.presents.keepMax;
-      SG.save.data.wings = 0;
-      SG.save.data.raid = true;
-      SG.save.data.raidWon = kept;
-      SG.save.data.presentsSeen = kept;
-      SG.save.data.econ2 = true;
-      SG.save.write();
-      devSay('post-raid: ' + kept + ' kept, grand prize re-priced');
-    }
+    if (SG.ui.button(g, { x: rx + (rw + rgap), y: 264, w: rw, h: 40 }, 'AFTER RAID', {
+      color: '#a077ff', text: '#17120a', size: 13, r: 10,
+    })) devPostRaid(0);
 
-    if (SG.ui.button(g, { x: CX + 310 - 24 - 186, y: 264, w: 186, h: 40 }, 'WIPE SAVE', {
-      color: '#8a2540', text: '#fff', size: 14, r: 10,
+    /* One wing short of the last present. Read from raidTotal, not from
+       the live ladder: before the raid that last goal still says 20,000,
+       and this button is about the state after it. */
+    if (SG.ui.button(g, { x: rx + (rw + rgap) * 2, y: 264, w: rw, h: 40 },
+        'RAID + ' + fmtN(SG.presents.raidTotal - 1), {
+      color: '#c9a2ff', text: '#17120a', size: 13, r: 10,
+    })) devPostRaid(SG.presents.raidTotal - 1);
+
+    if (SG.ui.button(g, { x: rx + (rw + rgap) * 3, y: 264, w: rw, h: 40 }, 'WIPE SAVE', {
+      color: '#8a2540', text: '#fff', size: 13, r: 10,
     })) {
       try { localStorage.removeItem('santigame.v1'); } catch (e) {}
       SG.save.data.wings = 0;

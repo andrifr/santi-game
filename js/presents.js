@@ -250,6 +250,7 @@
     raidDue: function () { return !SG.save.data.raid && wingsNow() >= RAID_AT; },
     raidAt: RAID_AT,
     keepMax: RAID_KEEP_MAX,
+    raidTotal: RAID_TOTAL,
   };
 
   // ---------------------------------------------------------------
