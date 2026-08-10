@@ -60,6 +60,24 @@ Live a minute later at `https://<you>.github.io/<repo>/`.
 After pushing an update, bump the `?v=` numbers on the script tags in
 `index.html` — otherwise phones keep serving the cached copy.
 
+## Installing it
+
+On **Android/Chrome** the game offers a real one-tap **Install** button
+the first time it loads. That works because `sw.js` makes it a proper
+installable PWA — Chrome only offers an install for a site that can
+answer a navigation while offline.
+
+On **iPhone** there is no install API at all; Safari only has Share →
+Add to Home Screen, so the banner there can do no more than point at it.
+
+Either way the service worker means the game **plays with no signal**
+once it has been opened once. Music is the exception and is never cached
+— the five tracks are ~21MB, which is a lot of someone's phone to spend
+uninvited. Offline play works, it is just quiet.
+
+`CACHE` in `sw.js` is bumped alongside the `?v=` numbers in
+`index.html`.
+
 ## Playing fullscreen on iPhone
 
 iOS Safari doesn't support the Fullscreen API, so browser chrome can't be

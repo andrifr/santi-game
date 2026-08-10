@@ -246,9 +246,12 @@ depth — an easy and near-invisible bug.
 
 ## Gotchas that have already cost time
 
-- **Bump `?v=` in `index.html` after editing any JS or CSS.** Otherwise
-  the browser serves a stale copy and you debug a file that isn't
-  running.
+- **Bump `?v=` in `index.html` after editing any JS or CSS, and `CACHE`
+  in `sw.js` with it.** Otherwise the browser serves a stale copy and
+  you debug a file that isn't running. The service worker does not make
+  this worse - every script is asked for by a versioned URL, so a bump
+  requests something that was never cached - but the old entries only
+  get evicted when the cache name changes.
 - **A headless/background browser throttles `requestAnimationFrame`, and
   `dt` is clamped to 0.05.** The game then runs in roughly 4x slow
   motion, so wall-clock measurements are badly wrong. For tuning, drive
@@ -321,6 +324,20 @@ bugs and were not:
 - **Teleporting the player without moving the camera.** Screen
   coordinates are computed from `st.cam`, which lerps; set `cam` too, or
   the tap you synthesize lands off-screen and is correctly discarded.
+
+## Installing, and offline
+
+`sw.js` caches the shell and everything with a `?v=` on it, so the game
+plays with no signal. Music is deliberately excluded - the five tracks
+are ~21MB. Navigations are network-first so a deploy is picked up as
+soon as the phone is online; the cache is only the offline fallback.
+
+The service worker is also what makes the **Android install prompt**
+exist at all: Chrome only fires `beforeinstallprompt` for a site that
+answers a navigation offline. The engine keeps that event and puts a
+real Install button in the `#a2hs` banner. **iOS has no install API** -
+Safari only has Share > Add to Home Screen - so there the same banner
+can do no more than say where the button is.
 
 ## iOS
 

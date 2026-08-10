@@ -1468,15 +1468,59 @@
   window.addEventListener('orientationchange', function () { setTimeout(checkOrientation, 260); });
 
   SG.initShell = function () {
-    // iOS Safari can't do real fullscreen; nudge toward home-screen install.
+    var installBtn = document.getElementById('a2hsInstall');
+    var textEl = document.getElementById('a2hsText');
+    var deferred = null;
+
+    function dismiss(remember) {
+      a2hsEl.classList.add('hidden');
+      if (remember) { save.data.seenA2HS = true; save.write(); }
+    }
+
+    /* Chrome offers a real one-tap install, but only for a site that
+       answers a navigation offline - which is what sw.js is for. The
+       event has to be kept: prompt() can only be called once, and only
+       from inside a user gesture, so it cannot be called from here. */
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      deferred = e;
+      if (platform.standalone || save.data.seenA2HS) return;
+      textEl.innerHTML = 'Install it and it opens like an app - fullscreen, ' +
+                         'its own icon, and it works without a signal.';
+      installBtn.classList.remove('hidden');
+      a2hsEl.classList.remove('hidden');
+    });
+
+    installBtn.addEventListener('click', function () {
+      if (!deferred) return;
+      var d = deferred;
+      deferred = null;              // one shot, however it goes
+      d.prompt();
+      var done = d.userChoice;
+      if (done && done.then) done.then(function () { dismiss(true); });
+      else dismiss(true);
+    });
+
+    window.addEventListener('appinstalled', function () { dismiss(true); });
+
+    /* iOS has no install API at all - Safari only has Share > Add to
+       Home Screen - so the most that can be done is say where it is. */
     if (platform.iOS && !platform.standalone && !save.data.seenA2HS) {
       a2hsEl.classList.remove('hidden');
     }
+
     document.getElementById('a2hsClose').addEventListener('click', function () {
-      a2hsEl.classList.add('hidden');
-      save.data.seenA2HS = true;
-      save.write();
+      dismiss(true);
     });
+
+    // Registered late and failing quietly: no service worker just means
+    // no offline and no install prompt, never a broken game.
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./sw.js').catch(function () {});
+      });
+    }
+
     checkOrientation();
   };
 })();
