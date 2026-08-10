@@ -89,11 +89,17 @@ another lane, yellow hurdles jumped, blue scaffold bars slid under.
 Wings are points; the green magnet pulls them in for 8 seconds; the hot
 sauce gives 6 seconds of speed, invincibility and auto-collect.
 
-**Air Jordans** give 10 seconds of double jump — one extra jump per trip
-off the ground, taken by jumping again in mid-air. That reaches 2.92
-against the 1.5 a crate needs, so while they last a red crate can be
-jumped instead of dodged. A single jump tops out at 1.46 and never
-clears one, so the shoes are the only way over.
+**Adidas slides** give 10 seconds of double jump — one extra jump per
+trip off the ground, taken by jumping again in mid-air. The apex is
+**5.73** against the 1.5 a crate needs and the 3.12 top of a scaffold
+bar, so while they last a red crate can be jumped instead of dodged and
+a bar can be cleared over the top instead of slid under. A single jump
+tops out at 1.46 and clears neither, so the slides are the only way over.
+
+At the player's depth one world unit is 100px, so a jump that size is
+taller than the screen — his feet alone would sit at y=−155. The camera
+lifts with him above 2.0 units, capped at 300px so the road ahead stays
+readable. An ordinary run never moves it.
 
 The run opens with the road already dressed: the first wings arrive
 about 1.7 seconds in and the countdown is 1.8, so it's playable 3½
