@@ -384,7 +384,7 @@
     'Lap. She is doing the thing again.',
   ];
 
-  var WINGS_PER_TASK = 30;     // ~12 tasks a day at the shared ~130/min
+  var WINGS_PER_TASK = 30;     // 11-15 jobs a day at the shared ~130/min
 
   // `ink` is the wordmark colour and must contrast with `box`.
   var SHIRTS = [
