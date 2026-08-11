@@ -46,10 +46,30 @@
       { id: 'poster',    x: 600,  w: 110, kind: 'poster',    label: 'POSTER', onWall: true,
         flavor: ['1.2M subscribers. One day.', 'SANTI CAN\'T - the poster.',
                  'Straight. Finally straight.', 'Daley says it is crooked. It is not.'] },
+      { id: 'laundry',   x: 345,  w: 56,  kind: 'laundry',   label: 'THE PILE',
+        flavor: ['That is the clean pile. Probably.',
+                 'It has structure now. Load-bearing.',
+                 'Daley calls it a floordrobe. I call it a system.',
+                 'Everything in there is one sniff away from fine.',
+                 'I know exactly what is in there. I do not.'] },
 
       // --- bathroom ---
       { id: 'sink',      x: 940,  w: 150, kind: 'sink',      label: 'MIRROR' },
+      { id: 'towel',     x: 820,  w: 70,  kind: 'towel',     label: 'THE TOWEL', onWall: true,
+        flavor: ['Damp. Permanently damp. Nobody knows why.',
+                 'Hers is folded. Mine is a shape.',
+                 'One towel, four days. Efficiency.',
+                 'It smells fine. I checked. Once.'] },
+      { id: 'brush',     x: 1050, w: 54,  kind: 'brush',     label: 'TOOTHBRUSH',
+        flavor: ['Electric. It judges me in real time.',
+                 'Two minutes, it says. Forty seconds, I say.',
+                 'The blue one. The blue one is mine.'] },
       { id: 'hairspray', x: 1120, w: 70,  kind: 'hairspray', label: 'HAIRSPRAY' },
+      { id: 'scale',     x: 1195, w: 60,  kind: 'scale',     label: 'THE SCALE',
+        flavor: ['It is wrong. It has been wrong since March.',
+                 'I only trust it when it agrees with me.',
+                 'Weigh yourself after wings and get the number you earned.',
+                 'Muscle. All of it. Every gram.'] },
       { id: 'toilet',    x: 1290, w: 110, kind: 'toilet',    label: 'TOILET',
         flavor: [
           'Morning poop: done. Magnificent.',
@@ -60,6 +80,11 @@
         ] },
 
       // --- closet ---
+      { id: 'caps',      x: 1560, w: 100, kind: 'caps',      label: 'THE CAP WALL', onWall: true,
+        flavor: ['Eleven caps. One head.',
+                 'I wear the same one. The rest are for morale.',
+                 'Daley asked which is my favourite. Rude question.',
+                 'Two of these have never been outside.'] },
       { id: 'rack',      x: 1650, w: 300, kind: 'rack',      label: 'SUPREME TEES' },
       { id: 'shoes',     x: 1900, w: 120, kind: 'shoes',     label: 'SHOES',
         flavor: ['Fresh. Obviously.', 'These ones. Always these ones.',
@@ -86,6 +111,11 @@
         flavor: ['Nothing on.', 'Fortnite later. Promise.',
                  'Paused three weeks ago. Still paused.',
                  'K3 on the music channel. Leave it.'] },
+      { id: 'trophy',    x: 2520, w: 52,  kind: 'trophy',    label: 'THE TROPHY',
+        flavor: ['Second place. Out of two.',
+                 'They spelled my name wrong. Still counts.',
+                 'Participation. Displayed with pride.',
+                 'Daley has three of these. We do not discuss it.'] },
       { id: 'camera',    x: 2620, w: 130, kind: 'camera',    label: 'CAMERA' },
       { id: 'phone',     x: 2780, w: 70,  kind: 'phone',     label: 'PHONE' },
 
@@ -94,6 +124,11 @@
         flavor: ['Hot sauce. Three bottles.', 'Mostly hot sauce in here.',
                  'One yoghurt. Expired. Load-bearing.',
                  'Daley labelled her cheese. Bold.'] },
+      { id: 'calendar',  x: 3060, w: 80,  kind: 'calendar',  label: 'THE CALENDAR', onWall: true,
+        flavor: ['Still on March. March was a strong month.',
+                 'Every square says WINGS. That is a plan.',
+                 'Daley wrote something on the 14th. Bold of her to assume I look.',
+                 'Bin day is on there somewhere. Allegedly.'] },
       { id: 'counter',   x: 3160, w: 240, kind: 'counter',   label: 'CASH TOPIT',
         flavor: ['Cash topit. The only breakfast.', 'Bread. Cheese. Microwave. Done.'] },
       { id: 'microwave', x: 3380, w: 140, kind: 'microwave', label: 'MICROWAVE' },
@@ -103,9 +138,23 @@
 
       // --- hall / outside ---
       { id: 'leash',     x: 3660, w: 60,  kind: 'leash',     label: 'LEASH', onWall: true },
+      { id: 'post',      x: 3700, w: 54,  kind: 'post',      label: 'THE POST',
+        flavor: ['Unopened, so technically it has not happened yet.',
+                 'One of these is a parcel. The rest are consequences.',
+                 'I will read them all on Sunday. Some Sunday.',
+                 'Addressed to the previous guy. His problem now.'] },
       { id: 'door',      x: 3790, w: 130, kind: 'door',      label: 'FRONT DOOR' },
+      { id: 'pigeon',    x: 3950, w: 60,  kind: 'pigeon',    label: 'THE PIGEON',
+        flavor: ['He lives here. I just pay for it.',
+                 'We have an understanding. I do not know the terms.',
+                 'Rue has never once caught him. He knows that.',
+                 'That is not a bird, that is a neighbour.'] },
       { id: 'bin',       x: 4060, w: 80,  kind: 'bin',       label: 'BIN',
         flavor: ['Someone else\'s problem.', 'Bin day was Tuesday.'] },
+      { id: 'postbox',   x: 4150, w: 54,  kind: 'postbox',   label: 'POSTBOX',
+        flavor: ['I posted a letter once. Never heard back.',
+                 'Red. That is the entire personality.',
+                 'Rue barks at it. Every day. Same box.'] },
       { id: 'lamp',      x: 4220, w: 50,  kind: 'lamp',      label: 'LAMPPOST',
         flavor: ['Rue knows this one well.', 'A landmark, apparently.',
                  'Every single time. Without fail.',
@@ -191,6 +240,13 @@
     { id: 'game',   title: 'ONE QUICK GAME',    hint: 'It is never one game',      target: 'console' },
     { id: 'plant',  title: 'THE PLANT',         hint: 'Water it before it dies',   target: 'plant' },
     { id: 'guitar', title: 'AZIZAM',            hint: 'The one song I know',       target: 'guitar' },
+    { id: 'teeth',  title: 'THE TEETH',         hint: 'Two minutes. Allegedly.',   target: 'brush' },
+    { id: 'sit',    title: 'FIVE MINUTES',      hint: 'Sit down. Just for a second.', target: 'couch' },
+    { id: 'tunes',  title: "K3 O'CLOCK",        hint: 'Full volume. The only volume.', target: 'stereo' },
+    { id: 'laces',  title: 'LACE UP',           hint: 'The good ones',             target: 'shoes' },
+    { id: 'poster', title: 'THE POSTER',        hint: 'It is crooked. It is not, but fix it.', target: 'poster' },
+    { id: 'water',  title: 'HYDRATE',           hint: 'Water. Reportedly important.', target: 'fridge' },
+    { id: 'mail',   title: 'THE POST',          hint: 'Open one. Just one.',       target: 'post' },
     { id: 'sleep',  title: 'GO TO SLEEP',       hint: 'Back to bed',               target: 'bed' },
   ];
 
@@ -202,9 +258,14 @@
     ['leash', 'out', 'tree', 'home'],
     ['hair'], ['shirt'], ['video'], ['wings'], ['call'],
     ['game'], ['plant'], ['guitar'],
+    ['teeth'], ['sit'], ['tunes'], ['laces'], ['poster'], ['water'], ['mail'],
   ];
   var ALWAYS = ['hair', 'wings'];      // the two he would never skip
-  var JOBS_PER_DAY = 8;                // blocks between waking and sleeping
+  /* Blocks between waking and sleeping. Nine rather than eight because
+     the pool of one-job blocks grew: the same eight would have made the
+     average day shorter, and the present ladder is denominated in
+     minutes, so a day quietly losing a job moves every threshold. */
+  var JOBS_PER_DAY = 9;
 
   function taskById(id) {
     for (var i = 0; i < ALL_TASKS.length; i++) if (ALL_TASKS[i].id === id) return ALL_TASKS[i];
@@ -508,6 +569,54 @@
         openOverlay('guitar', { strums: 0 });
         break;
 
+      case 'teeth':
+        openOverlay('brush', { scrubs: 0 });
+        break;
+
+      case 'sit':
+        openOverlay('sit', { t: 0, stage: 0 });
+        break;
+
+      case 'tunes':
+        openOverlay('dance', { moves: 0, t: 0 });
+        break;
+
+      case 'laces':
+        say(SG.pick([
+          'Laced. Double knotted. Serious business.',
+          'Four weeks these took to arrive. Worth every day.',
+          'Nobody is going to notice. I will know.',
+        ]));
+        completeTask();
+        break;
+
+      case 'poster':
+        say(SG.pick([
+          'It was already straight. Now it is straighter.',
+          'Two millimetres. Daley will never see it.',
+          'Level. Do not touch it. Do not even look at it.',
+        ]));
+        completeTask();
+        break;
+
+      case 'water':
+        say(SG.pick([
+          'Water. The one thing I never do.',
+          'Half a glass. Let us not overdo it.',
+          'They say two litres a day. They say a lot of things.',
+        ]));
+        completeTask();
+        break;
+
+      case 'mail':
+        say(SG.pick([
+          'Opened one. It was a bill. Closed it again.',
+          'A parcel. For Daley. Obviously.',
+          'Junk, junk, and something official I will handle never.',
+        ]));
+        completeTask();
+        break;
+
       case 'sleep':
         st.inBed = true;
         openOverlay('sleep', { t: 0, stage: 0, line: 0 });
@@ -606,7 +715,7 @@
        landed on a control, so anything checked after it never sees them
        - which is exactly why this button did nothing. A tap here is
        consumed either way, so a miss cannot fall through to the room. */
-    if (st.sawTouch && SG.input.tappedRect(controlRects().use)) {
+    if (takeUseTap()) {
       var touchNear = reachObject();
       if (touchNear) useObject(touchNear);
       else SG.audio.play('back');
@@ -627,12 +736,11 @@
       if (near) useObject(near);
     }
 
-    var rc = controlRects();
-    var padJump = heldIn(rc.jump);
+    var padJump = jumpHeld();
     if (padJump && !st.jumpHeld) doJump();
     st.jumpHeld = padJump;
 
-    var padLeft = heldIn(rc.left), padRight = heldIn(rc.right);
+    var padLeft = walkHeld('left'), padRight = walkHeld('right');
 
     // keyboard for desktop
     var k = SG.input.keys;
@@ -686,39 +794,86 @@
     st.cam += (camTarget - st.cam) * Math.min(1, dt * 6);
   }
 
-  /* Thumb pads. Jump bottom left, walk bottom right, as asked. Lifted
-     well clear of the bottom edge: on an iPhone that strip is the
+  /* Thumb pads. Walk bottom left, act bottom right - the way round a
+     controller has it, and the way round it was asked for. Lifted well
+     clear of the bottom edge: on an iPhone that strip is the
      home-indicator gesture area and a thumb parked there has its press
-     taken by the system. They also clear the pause button, which sits
-     lower on the right. */
+     taken by the system. The pause button is top right, so nothing down
+     here has to dodge it. */
   function controlRects() {
     return {
-      jump:  { x: 30, y: SG.H - 132, w: 86, h: 78 },
+      left:  { x: 26,          y: SG.H - 150, w: 94,  h: 94 },
+      right: { x: 130,         y: SG.H - 150, w: 94,  h: 94 },
       // Touch only - a keyboard has E for this.
-      use:   { x: 126, y: SG.H - 132, w: 86, h: 78 },
-      left:  { x: SG.W - 216, y: SG.H - 132, w: 78, h: 78 },
-      right: { x: SG.W - 128, y: SG.H - 132, w: 78, h: 78 },
+      use:   { x: SG.W - 240,  y: SG.H - 150, w: 100, h: 94 },
+      jump:  { x: SG.W - 132,  y: SG.H - 150, w: 106, h: 94 },
     };
   }
 
-  function heldIn(r) {
+  /* The drawn pads are a hint, not the hit box: a thumb that drifts a
+     few pixels off a small button falls into a dead patch and he stops
+     dead. Each side is one zone reaching the screen edge, split down
+     the middle - never two padded rects, which would overlap and let
+     the boundary silently favour whichever was tested first. */
+  var PAD_SLOP = 26;
+
+  function sideZone(a, b) {
+    var rc = controlRects();
+    return { x: rc[a].x - PAD_SLOP, y: rc[a].y - PAD_SLOP,
+             w: (rc[b].x + rc[b].w) - rc[a].x + PAD_SLOP * 2,
+             h: rc[a].h + PAD_SLOP * 2 };
+  }
+  function sideSplit(a, b) {
+    var rc = controlRects();
+    return (rc[a].x + rc[a].w + rc[b].x) / 2;
+  }
+  function walkZone()  { return sideZone('left', 'right'); }
+  function walkSplit() { return sideSplit('left', 'right'); }
+  function actZone()   { return sideZone('use', 'jump'); }
+  function actSplit()  { return sideSplit('use', 'jump'); }
+
+  function inR(x, y, r) { return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h; }
+
+  // Which way the walking zone is being pushed, if at all.
+  function walkHeld(which) {
+    var zone = walkZone(), split = walkSplit();
     var ps = SG.input.pointers;
     for (var id in ps) {
       var p = ps[id];
-      if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) return true;
+      if (!inR(p.x, p.y, zone)) continue;
+      if (which === 'left' ? p.x < split : p.x >= split) return true;
+    }
+    return false;
+  }
+
+  /* On a phone the action corner is USE then jump; on a mouse there is
+     no USE pad drawn, so the whole corner jumps rather than leaving
+     half of it dead. */
+  function jumpHeld() {
+    var zone = actZone(), split = actSplit();
+    var ps = SG.input.pointers;
+    for (var id in ps) {
+      var p = ps[id];
+      if (inR(p.x, p.y, zone) && (!st.sawTouch || p.x >= split)) return true;
+    }
+    return false;
+  }
+
+  function takeUseTap() {
+    if (!st.sawTouch) return false;
+    var zone = actZone(), split = actSplit();
+    var taps = SG.input.taps;
+    for (var i = 0; i < taps.length; i++) {
+      if (inR(taps[i].x, taps[i].y, zone) && taps[i].x < split) {
+        taps.splice(i, 1);
+        return true;
+      }
     }
     return false;
   }
 
   function onControls(x, y) {
-    var rc = controlRects();
-    for (var k in rc) {
-      // Not drawn on desktop, so it must not be a dead patch there either.
-      if (k === 'use' && !st.sawTouch) continue;
-      var r = rc[k];
-      if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return true;
-    }
-    return false;
+    return inR(x, y, walkZone()) || inR(x, y, actZone());
   }
 
   function inReach(o) { return Math.abs(o.x - st.x) <= REACH + o.w / 2; }
@@ -886,6 +1041,54 @@
         }
         break;
 
+      case 'brush':
+        if (overlayTap()) {
+          o.scrubs++;
+          SG.audio.play('slide');
+          if (o.scrubs >= 4) {
+            say(SG.pick([
+              'Forty seconds. The brush disagrees.',
+              'Minty. Devastating.',
+              'The app says I missed the back left. The app is wrong.',
+            ]));
+            closeOverlay(true);
+          }
+        }
+        break;
+
+      /* Five minutes on the couch, which is never five minutes. The
+         wait is the joke, so it plays itself out before the way out
+         appears. */
+      case 'sit':
+        o.t += dt;
+        if (o.stage === 0) {
+          if (o.t > 2) { o.stage = 1; o.t = 0; SG.audio.play('back'); }
+        } else if (o.t > 0.6 && overlayTap()) {
+          say(SG.pick([
+            'Right. That is enough sitting.',
+            'I did not fall asleep. I was resting my face.',
+            'Forty one minutes. The couch always wins.',
+          ]));
+          closeOverlay(true);
+        }
+        break;
+
+      case 'dance':
+        o.t += dt;
+        if (overlayTap()) {
+          o.moves++;
+          SG.audio.play(['point', 'wing', 'pop', 'select'][o.moves % 4]);
+          if (o.moves >= 4) {
+            say(SG.pick([
+              'The neighbours get this for free.',
+              'Every word. I know every single word.',
+              'That is choreography. Learned it off the telly.',
+            ]));
+            closeOverlay(true);
+          }
+        }
+        break;
+
       case 'call':
         o.t += dt;
         if (overlayTap()) {
@@ -996,10 +1199,10 @@
 
   function drawControls(g) {
     var rc = controlRects();
-    pad(g, rc.jump, 'up', heldIn(rc.jump));
+    pad(g, rc.left, 'left', walkHeld('left'));
+    pad(g, rc.right, 'right', walkHeld('right'));
     if (st.sawTouch) pad(g, rc.use, 'use', !!reachObject());
-    pad(g, rc.left, 'left', heldIn(rc.left));
-    pad(g, rc.right, 'right', heldIn(rc.right));
+    pad(g, rc.jump, 'up', jumpHeld());
   }
 
   function pad(g, r, dir, on) {
@@ -1016,14 +1219,14 @@
       // Lit only when there is something to use, so it reads as a
       // prompt rather than a button that does nothing most of the time.
       SG.ui.text(g, 'USE', cx, cy + 1, {
-        size: 16, color: on ? '#fff' : 'rgba(255,255,255,0.45)', shadow: false,
+        size: 18, color: on ? '#fff' : 'rgba(255,255,255,0.45)', shadow: false,
       });
       g.restore();
       return;
     }
 
     g.fillStyle = on ? '#fff' : 'rgba(255,255,255,0.78)';
-    var a = 15;
+    var a = 18;
     g.beginPath();
     if (dir === 'up') {
       g.moveTo(cx, cy - a); g.lineTo(cx + a, cy + a * 0.68); g.lineTo(cx - a, cy + a * 0.68);
@@ -1509,6 +1712,146 @@
         g.fillRect(x - 62, base - 54, 10, 54);
         g.fillRect(x + 52, base - 54, 10, 54);
         break;
+
+      // A heap of tees, sorted by nothing.
+      case 'laundry': {
+        var heap = ['#e8202a', '#7c4dff', '#2f7d4f', '#f4f4f8'];
+        for (var lp = 0; lp < heap.length; lp++) {
+          g.fillStyle = heap[lp];
+          SG.roundRect(g, x - 28 + lp * 3, base - 14 - lp * 11, 56 - lp * 6, 16, 8);
+          g.fill();
+          g.strokeStyle = 'rgba(20,16,30,0.35)'; g.lineWidth = 1.5; g.stroke();
+        }
+        break;
+      }
+
+      case 'towel':
+        g.fillStyle = '#6b6480';
+        g.fillRect(x - 34, base - 250, 68, 6);               // rail
+        g.fillStyle = '#7fb8c9';
+        SG.roundRect(g, x - 28, base - 246, 56, 74, 4); g.fill();
+        g.fillStyle = '#9cd0de';
+        g.fillRect(x - 28, base - 210, 56, 8);
+        g.strokeStyle = 'rgba(20,16,30,0.3)'; g.lineWidth = 2;
+        SG.roundRect(g, x - 28, base - 246, 56, 74, 4); g.stroke();
+        break;
+
+      case 'brush':
+        g.fillStyle = '#d8e4ee';                              // cup
+        SG.roundRect(g, x - 16, base - 46, 32, 46, 5); g.fill();
+        g.strokeStyle = '#8f9db0'; g.lineWidth = 2; g.stroke();
+        var bcol = ['#4aa8ff', '#ff6b8a'];
+        for (var bb = 0; bb < 2; bb++) {
+          g.fillStyle = bcol[bb];
+          SG.roundRect(g, x - 10 + bb * 12, base - 82, 7, 44, 3); g.fill();
+          g.fillStyle = '#f4f4f8';
+          SG.roundRect(g, x - 11 + bb * 12, base - 86, 9, 8, 2); g.fill();
+        }
+        break;
+
+      case 'scale':
+        g.fillStyle = '#d8dce6';
+        SG.roundRect(g, x - 28, base - 16, 56, 16, 4); g.fill();
+        g.strokeStyle = '#8f9db0'; g.lineWidth = 2; g.stroke();
+        g.fillStyle = '#1a1730';
+        SG.roundRect(g, x - 15, base - 13, 30, 10, 2); g.fill();
+        // Whatever it says, it is wrong.
+        SG.ui.text(g, '??', x, base - 8, { size: 8, color: '#4dd47a', shadow: false });
+        break;
+
+      case 'caps': {
+        g.fillStyle = '#5a4a3a';
+        g.fillRect(x - 50, base - 200, 100, 6);
+        g.fillRect(x - 50, base - 254, 100, 6);
+        var caps = ['#e8202a', '#1d3b5c', '#2f7d4f', '#ffd400', '#7c4dff', '#f4f4f8'];
+        for (var cp = 0; cp < caps.length; cp++) {
+          var cxp = x - 34 + (cp % 3) * 34, cyp = base - (cp < 3 ? 254 : 200);
+          g.fillStyle = caps[cp];
+          g.beginPath();
+          g.arc(cxp, cyp, 11, Math.PI, 0);                    // crown
+          g.closePath(); g.fill();
+          g.fillRect(cxp - 11, cyp - 1, 22, 3);
+          g.fillRect(cxp + 8, cyp - 2, 12, 4);                // peak
+        }
+        break;
+      }
+
+      case 'trophy':
+        g.fillStyle = '#3a3550';
+        SG.roundRect(g, x - 18, base - 14, 36, 14, 3); g.fill();
+        g.fillStyle = '#c9a23a';
+        g.fillRect(x - 5, base - 34, 10, 20);
+        g.beginPath();
+        g.moveTo(x - 18, base - 68); g.lineTo(x + 18, base - 68);
+        g.lineTo(x + 11, base - 34); g.lineTo(x - 11, base - 34);
+        g.closePath(); g.fill();
+        g.strokeStyle = '#e8c96a'; g.lineWidth = 3;
+        g.beginPath(); g.arc(x - 18, base - 58, 8, Math.PI * 0.5, Math.PI * 1.5, true); g.stroke();
+        g.beginPath(); g.arc(x + 18, base - 58, 8, Math.PI * 1.5, Math.PI * 0.5); g.stroke();
+        SG.ui.text(g, '2', x, base - 50, { size: 13, color: '#6b5418', shadow: false });
+        break;
+
+      case 'calendar': {
+        g.fillStyle = '#f2ead8';
+        SG.roundRect(g, x - 38, base - 268, 76, 88, 4); g.fill();
+        g.fillStyle = '#e8202a';
+        SG.roundRect(g, x - 38, base - 268, 76, 20, 4); g.fill();
+        SG.ui.text(g, 'MAR', x, base - 256, { size: 11, color: '#fff', shadow: false });
+        g.fillStyle = 'rgba(40,32,60,0.35)';
+        for (var cd = 0; cd < 12; cd++) {
+          g.fillRect(x - 30 + (cd % 4) * 18, base - 240 + Math.floor(cd / 4) * 16, 12, 10);
+        }
+        g.strokeStyle = '#e8202a'; g.lineWidth = 2.5;         // one square circled
+        g.beginPath(); g.ellipse(x + 6, base - 219, 10, 8, 0, 0, Math.PI * 2); g.stroke();
+        break;
+      }
+
+      case 'post': {
+        g.fillStyle = '#e8e0cc';
+        for (var pv = 0; pv < 3; pv++) {
+          g.save();
+          g.translate(x, base - 6 - pv * 7);
+          g.rotate((pv - 1) * 0.06);
+          SG.roundRect(g, -24, -7, 48, 13, 2); g.fill();
+          g.strokeStyle = 'rgba(60,48,40,0.4)'; g.lineWidth = 1.5; g.stroke();
+          g.restore();
+        }
+        g.fillStyle = '#e8202a';                              // one of them is not fine
+        SG.roundRect(g, x - 6, base - 26, 12, 8, 2); g.fill();
+        break;
+      }
+
+      case 'pigeon': {
+        var bob = Math.sin(st.t * 3.1) * 2;
+        g.fillStyle = '#6b7180';
+        g.beginPath(); g.ellipse(x, base - 16 + bob, 18, 12, 0, 0, Math.PI * 2); g.fill();
+        g.beginPath(); g.ellipse(x - 14, base - 28 + bob, 9, 9, 0, 0, Math.PI * 2); g.fill();
+        g.fillStyle = '#4f5560';
+        g.beginPath(); g.ellipse(x + 4, base - 17 + bob, 12, 7, 0.2, 0, Math.PI * 2); g.fill();
+        g.fillStyle = '#5aa0a8';                              // that iridescent neck
+        g.beginPath(); g.ellipse(x - 10, base - 22 + bob, 6, 5, 0, 0, Math.PI * 2); g.fill();
+        g.fillStyle = '#e8a23a';
+        g.beginPath();
+        g.moveTo(x - 22, base - 29 + bob); g.lineTo(x - 30, base - 27 + bob);
+        g.lineTo(x - 22, base - 25 + bob); g.closePath(); g.fill();
+        g.fillRect(x - 4, base - 5, 2.5, 5);
+        g.fillRect(x + 3, base - 5, 2.5, 5);
+        g.fillStyle = '#1a1730';
+        g.beginPath(); g.arc(x - 16, base - 30 + bob, 1.8, 0, Math.PI * 2); g.fill();
+        break;
+      }
+
+      case 'postbox':
+        g.fillStyle = '#3f3a52';
+        g.fillRect(x - 6, base - 40, 12, 40);
+        g.fillStyle = '#c0202a';
+        SG.roundRect(g, x - 26, base - 104, 52, 66, 8); g.fill();
+        g.fillStyle = '#8f1620';
+        SG.roundRect(g, x - 18, base - 88, 36, 7, 3); g.fill();
+        g.fillStyle = '#e8e0cc';
+        SG.roundRect(g, x - 14, base - 68, 28, 18, 3); g.fill();
+        SG.ui.text(g, 'B', x, base - 58, { size: 12, color: '#c0202a', shadow: false });
+        break;
     }
     g.restore();
   }
@@ -1864,6 +2207,90 @@
         break;
       }
 
+      case 'brush': {
+        SG.ui.panel(g, CX - 190, 110, 380, 300);
+        SG.ui.text(g, 'THE TEETH', CX, 152, { size: 26, color: '#ffd400', shadow: false });
+        SG.art.drawHead(g, CX, 262, 62, 'santi', 'normal');
+        // Foam builds up over the mouth, one gout per scrub.
+        for (var fb = 0; fb < o.scrubs * 5; fb++) {
+          var fa = fb * 2.399;
+          g.fillStyle = 'rgba(255,255,255,' + (0.5 + (fb % 3) * 0.15) + ')';
+          g.beginPath();
+          g.arc(CX + Math.cos(fa) * (12 + fb * 1.5), 296 + Math.sin(fa) * (7 + fb * 0.6),
+                4 + (fb % 4), 0, Math.PI * 2);
+          g.fill();
+        }
+        // the brush, scrubbing
+        var sweep = Math.sin(st.t * 16) * 16;
+        g.save();
+        g.translate(CX + sweep, 300);
+        g.rotate(0.5);
+        g.fillStyle = '#4aa8ff';
+        SG.roundRect(g, -6, 0, 12, 64, 5); g.fill();
+        g.fillStyle = '#f4f4f8';
+        SG.roundRect(g, -9, -10, 18, 14, 3); g.fill();
+        g.restore();
+        SG.ui.text(g, act('BRUSH') + '   ' + o.scrubs + ' / 4', CX, 376, {
+          size: 16, color: '#fff', shadow: false,
+        });
+        break;
+      }
+
+      case 'sit': {
+        SG.ui.panel(g, CX - 210, 120, 420, 270);
+        SG.ui.text(g, 'FIVE MINUTES', CX, 164, { size: 26, color: '#ffd400', shadow: false });
+        // A clock whose hand goes round far too fast to be five minutes.
+        var hand = o.stage === 0 ? o.t * 3.4 : 7 + o.t * 0.4;
+        g.strokeStyle = 'rgba(255,255,255,0.28)'; g.lineWidth = 4;
+        g.beginPath(); g.arc(CX, 268, 46, 0, Math.PI * 2); g.stroke();
+        g.strokeStyle = o.stage === 0 ? '#fff' : '#ff6b5c'; g.lineWidth = 4;
+        g.beginPath();
+        g.moveTo(CX, 268);
+        g.lineTo(CX + Math.sin(hand) * 34, 268 - Math.cos(hand) * 34);
+        g.stroke();
+        if (o.stage === 0) {
+          SG.ui.text(g, 'just five', CX, 338, {
+            size: 15, color: 'rgba(255,255,255,0.55)', shadow: false,
+          });
+        } else {
+          SG.ui.text(g, '41 MINUTES LATER', CX, 338, { size: 17, color: '#ff6b5c', shadow: false });
+          if (o.t > 0.6) {
+            SG.ui.text(g, act('GET UP'), CX, 368, { size: 14, color: '#4dd47a', shadow: false });
+          }
+        }
+        break;
+      }
+
+      case 'dance': {
+        SG.ui.panel(g, CX - 210, 120, 420, 270);
+        SG.ui.text(g, "K3 O'CLOCK", CX, 164, { size: 26, color: '#ff8ad8', shadow: false });
+        // Speaker, thumping harder the further in he gets.
+        var kick = 1 + Math.sin(st.t * 11) * (0.06 + o.moves * 0.03);
+        g.fillStyle = '#2a2233';
+        SG.roundRect(g, CX - 38, 200, 76, 130, 9); g.fill();
+        g.fillStyle = '#141018';
+        g.beginPath(); g.arc(CX, 242, 24 * kick, 0, Math.PI * 2); g.fill();
+        g.fillStyle = '#4a4258';
+        g.beginPath(); g.arc(CX, 242, 10 * kick, 0, Math.PI * 2); g.fill();
+        g.fillStyle = '#141018';
+        g.beginPath(); g.arc(CX, 304, 15 * kick, 0, Math.PI * 2); g.fill();
+        // a note per move, drifting off
+        for (var nt = 0; nt < o.moves; nt++) {
+          var rise = ((st.t * 60 + nt * 47) % 110);
+          g.save();
+          g.globalAlpha = 1 - rise / 110;
+          g.fillStyle = ['#ff8ad8', '#ffd400', '#4dd47a', '#4aa8ff'][nt % 4];
+          var nx = CX + (nt % 2 ? 82 : -82) + Math.sin(rise * 0.06 + nt) * 12;
+          g.beginPath(); g.ellipse(nx, 300 - rise, 7, 5, -0.4, 0, Math.PI * 2); g.fill();
+          g.fillRect(nx + 5, 300 - rise - 22, 3, 22);
+          g.restore();
+        }
+        SG.ui.text(g, act('DANCE') + '   ' + o.moves + ' / 4', CX, 368, {
+          size: 16, color: '#fff', shadow: false,
+        });
+        break;
+      }
+
       case 'call': {
         SG.ui.panel(g, CX - 250, 96, 500, 330);
         var dFace = SG.art.faces.daley;
@@ -2046,14 +2473,22 @@
      it until he leaves. exit() is the only reliable stop: every way out
      of the mode - MENU, the pause menu, Escape - goes through a scene
      change, and a 4MB track left playing over the menu would be its own
-     bug. */
+     bug.
+
+     The two halves get different levels. The sung run-through is the
+     one piece of music here that is meant to be listened to, so it
+     plays up front; the instrumental afterwards is backing, and drops
+     to the level every other mode's loop sits at so the effects come
+     back through. */
   var MUSIC = 'assets/music/santi-song.mp3';
   var MUSIC_LOOP = 'assets/music/santi-song-instrumental.mp3';
+  var SONG_VOL = 0.6;        // the vocal take, out in front
+  var LOOP_VOL = 0.24;       // the instrumental, back under the effects
 
   SG.register('sim', {
     enter: function () {
       reset();
-      SG.audio.music.playThenLoop(MUSIC, MUSIC_LOOP);
+      SG.audio.music.playThenLoop(MUSIC, MUSIC_LOOP, { introVol: SONG_VOL, vol: LOOP_VOL });
     },
     exit: function () { SG.audio.music.stop(); },
     update: update,

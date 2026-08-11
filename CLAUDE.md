@@ -239,6 +239,23 @@ scene change puts `play()` in a rAF callback rather than the tap that
 caused it; the request is held and retried from `audio.unlock()`, which
 every pointerdown calls.
 
+A loop is the floor of the mix, not the middle of it: `MUSIC_VOL` is
+0.26 so the synthesized cues sit on top of it. Only music meant to be
+listened to rather than played under asks for its own level, per phase —
+the Simulator's sung run-through is at 0.6 and hands over to its
+instrumental at 0.24 (`playThenLoop(a, b, {introVol, vol})`).
+
+**Three separate things can silence the track** — the mode's own pause,
+the sound toggle, and the app being in the background — so they all go
+through one `musicSync()` rather than each pausing the element itself.
+`background(true)` is the one to remember: the loop stops when the page
+is hidden, so nothing inside a mode can reach `follow()` any more, and a
+track left running plays on under whatever the phone does next
+(*"the music keeps going in another app unless you pause it"*). It is
+raised from `visibilitychange`/`pagehide`/`pauseLoop` and lowered in
+`frame()` **after** `update()`, so a mode that paused itself on the way
+out has already said so and the track does not blip back for a frame.
+
 **No third-party audio ships here.** The repo is public and Pages serves
 it, so anything committed is published rather than private — the only
 recorded clips are the family's own. A commercial K3 track was offered
@@ -291,6 +308,10 @@ depth — an easy and near-invisible bug.
 - **Touch controls belong clear of the bottom edge of the screen.** On
   an iPhone that strip is the home-indicator gesture area; a thumb
   parked there has its touch taken by the system mid-press.
+- **Movement goes bottom left, actions bottom right.** The way round a
+  controller has it, and what was asked for. Smurf World and the
+  Simulator share the rects, the look and the sides deliberately —
+  changing one and not the other is worse than either arrangement.
 - **The top right corner belongs to `#fsBtn`.** It is a fixed DOM
   overlay at a higher z-index covering roughly the first 66 virtual
   pixels of that corner on the smallest phone, so anything drawn under
@@ -303,7 +324,13 @@ depth — an easy and near-invisible bug.
   stops the player dead, which is what "gets stuck" and "not sensitive
   enough" meant. Two padded rects side by side are the same trap, since
   they overlap and the boundary silently favours whichever is tested
-  first - use one zone with a split instead.
+  first - use one zone with a split instead. The Simulator does the same
+  now, one zone per corner.
+- **A pickup that accepts a nearby lane is a pickup that collects
+  itself.** Wing Run's lanes are 1.75 apart and the power-ups took
+  anything under 2, so standing one lane over was enough - which read as
+  the magnet reaching for them. Only wings come to you, and only while
+  the magnet is up; hot sauce is invincibility and nothing else.
 - **Image previews may ignore alpha.** Several source cutouts look like
   they still have a background when they do not. Check the alpha channel
   before "fixing" it — a background-removal pass on an already-cut image

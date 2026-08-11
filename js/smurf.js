@@ -470,17 +470,19 @@
   /* Held clear of the very bottom edge: on an iPhone that strip is the
      home-indicator gesture area, and a thumb parked there gets its touch
      stolen by the system mid-press. */
-  /* Same rects, same look and the same sides as the Simulator: jump
-     bottom left, walk bottom right. Smurf's pause button is top right,
-     so nothing down here has to dodge it. */
-  function padJump()  { return { x: 30, y: SG.H - 132, w: 86, h: 78 }; }
-  function padLeft()  { return { x: SG.W - 216, y: SG.H - 132, w: 78, h: 78 }; }
-  function padRight() { return { x: SG.W - 128, y: SG.H - 132, w: 78, h: 78 }; }
+  /* Same rects, same look and the same sides as the Simulator: walk
+     bottom left, jump bottom right - the way round a controller has it,
+     and the way round it was asked for. Smurf's pause button is top
+     right, so nothing down here has to dodge it. Bigger than they were,
+     because a thumb is not a mouse pointer. */
+  function padLeft()  { return { x: 26,          y: SG.H - 150, w: 94, h: 94 }; }
+  function padRight() { return { x: 130,         y: SG.H - 150, w: 94, h: 94 }; }
+  function padJump()  { return { x: SG.W - 132,  y: SG.H - 150, w: 106, h: 94 }; }
 
   /* The drawn pads are a hint, not the hit box. A thumb that drifted a
      few pixels off a button used to fall into a dead zone and stop him
      dead - "gets stuck", "not sensitive enough" - so the whole bottom
-     right corner steers, split down the middle, and the whole left half
+     left corner steers, split down the middle, and the whole right half
      jumps. Moving the buttons must not bring that back.
 
      Left and right are one zone rather than two rects for the same
@@ -517,8 +519,8 @@
         if (p.x < padSplit()) left = true; else right = true;
         continue;
       }
-      if (p.x < SG.W * 0.5) { jump = true; continue; }
-      // Anywhere else on the right half still steers, relative to where
+      if (p.x >= SG.W * 0.5) { jump = true; continue; }
+      // Anywhere else on the left half still steers, relative to where
       // the finger landed.
       var dx = p.x - p.sx;
       if (dx < -10) left = true;
@@ -529,7 +531,7 @@
     if (!jump) {
       for (var i = 0; i < SG.input.taps.length; i++) {
         var t = SG.input.taps[i];
-        if (t.x < SG.W * 0.5 && !inRect(t.x, t.y, pr)) {
+        if (t.x >= SG.W * 0.5 && !inRect(t.x, t.y, pr)) {
           SG.input.taps.splice(i, 1);
           st.jumpBuf = BUFFER;
           break;
@@ -2728,7 +2730,7 @@
     for (var id in SG.input.pointers) {
       var p = SG.input.pointers[id];
       var hit = kind === 'jump'
-        ? p.x < SG.W * 0.5 && !inRect(p.sx, p.sy, pauseRect())
+        ? p.x >= SG.W * 0.5 && !inRect(p.sx, p.sy, pauseRect())
         : inRect(p.x, p.y, zone) && (kind === 'left' ? p.x < split : p.x >= split);
       if (hit) { on = true; break; }
     }
@@ -2742,7 +2744,7 @@
     g.stroke();
 
     g.fillStyle = on ? '#fff' : 'rgba(255,255,255,0.78)';
-    var a = 15;
+    var a = 18;
     g.beginPath();
     if (kind === 'jump') {
       g.moveTo(cx, cy - a); g.lineTo(cx + a, cy + a * 0.68); g.lineTo(cx - a, cy + a * 0.68);

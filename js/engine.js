@@ -300,8 +300,21 @@
      the tap that caused it, and Safari can refuse. When it does we hold
      the request and retry from unlock(), which every pointerdown calls -
      so the first touch inside the mode starts it. */
-  var music = (audio.music = { el: null, want: null, blocked: false, paused: false });
-  var MUSIC_VOL = 0.45;      // under the voice lines, not over them
+  var music = (audio.music = { el: null, want: null, blocked: false, paused: false, bg: false });
+
+  /* Well under the effects. A loop is the floor of the mix, not the
+     middle of it - at 0.45 the synthesized cues (a wing, a hit, the
+     "lap") were competing with it instead of sitting on top. A track
+     that is meant to be listened to rather than played under - the
+     Simulator's sung intro - asks for its own level per phase. */
+  var MUSIC_VOL = 0.26;
+
+  function volFor(part) {
+    var w = music.want;
+    if (!w) return MUSIC_VOL;
+    var v = part === 'intro' ? w.introVol : w.loopVol;
+    return v === undefined ? MUSIC_VOL : v;
+  }
 
   function musicEl() {
     if (music.el) return music.el;
@@ -309,11 +322,13 @@
     el.preload = 'auto';
     el.volume = MUSIC_VOL;
     el.addEventListener('ended', function () {
-      // The intro is over: hand across to the track that loops.
+      // The intro is over: hand across to the track that loops, at
+      // whatever level the loop asked for rather than the intro's.
       if (!music.want || !music.want.loop) return;
       el.loop = true;
       el.src = music.want.loop;
-      musicPlay();
+      el.volume = volFor('loop');
+      musicSync();
     });
     // A missing or undecodable file must not take the mode down with it.
     el.addEventListener('error', function () { music.want = null; });
@@ -330,20 +345,45 @@
     }
   }
 
+  /* The one place that decides whether the element should be running.
+     Three separate things can silence it - the mode's own pause, the
+     sound toggle, and the whole app being in the background - and they
+     used to be checked in three different functions that could
+     disagree. Everything now sets its flag and calls this. */
+  function musicSync() {
+    if (!music.el || !music.want) return;
+    var want = audio.enabled && !music.paused && !music.bg;
+    if (!want) {
+      if (!music.el.paused) music.el.pause();
+      return;
+    }
+    if (music.el.paused && !music.blocked) musicPlay();
+  }
+
   /* Play `intro` once, then `loop` forever. Passing the same file for
-     both just loops it from the start. */
-  audio.music.playThenLoop = function (intro, loop) {
+     both just loops it from the start. `opts.vol` is the loop's level
+     and `opts.introVol` the intro's; both default to MUSIC_VOL. */
+  audio.music.playThenLoop = function (intro, loop, opts) {
+    opts = opts || {};
     var el = musicEl();
-    music.want = { intro: intro, loop: loop };
+    music.want = {
+      intro: intro, loop: loop,
+      introVol: opts.introVol === undefined ? opts.vol : opts.introVol,
+      loopVol: opts.vol,
+    };
     music.paused = false;
+    music.blocked = false;
     el.loop = !intro;
     el.src = intro || loop;
+    el.volume = volFor(intro ? 'intro' : 'loop');
     try { el.currentTime = 0; } catch (e) {}
-    musicPlay();
+    musicSync();
   };
 
   // A single track, round and round.
-  audio.music.loop = function (url) { audio.music.playThenLoop(null, url); };
+  audio.music.loop = function (url, vol) {
+    audio.music.playThenLoop(null, url, { vol: vol });
+  };
 
   audio.music.stop = function () {
     music.want = null;
@@ -360,20 +400,26 @@
   /* Modes call this every frame with their own pause flag rather than
      each having to remember what it last asked for. */
   audio.music.follow = function (paused) {
-    if (!music.el || !music.want || paused === music.paused) return;
+    if (paused === music.paused) return;
     music.paused = paused;
-    if (paused) music.el.pause();
-    else musicPlay();
+    musicSync();
+  };
+
+  /* The app went away - switched to another app, or the tab was
+     backgrounded. The loop stops with it, so a mode's own follow() is
+     never reached and a track left running plays on underneath
+     whatever the phone does next. Kept separate from `paused` so
+     coming back only resumes a game that was actually still running. */
+  audio.music.background = function (bg) {
+    if (bg === music.bg) return;
+    music.bg = bg;
+    musicSync();
   };
 
   // Called when the sound toggle flips, and from unlock() on every touch.
   audio.music.refresh = function () {
-    if (!music.el || !music.want) return;
-    if (!audio.enabled) { music.el.pause(); return; }
-    // Not while the game itself is paused - this fires on every touch,
-    // including the one that opened the pause menu.
-    if (music.paused) return;
-    if (music.el.paused) musicPlay();
+    music.blocked = false;      // a fresh gesture is worth another try
+    musicSync();
   };
 
   // Returns false if the sample isn't playable, so callers can fall back.
@@ -1358,6 +1404,10 @@
     if (!running) { input.clear(); input.releaseAll(); return; }
 
     if (current && current.update) current.update(dt);
+    /* Lifted here rather than on the visibilitychange itself: the mode
+       has just told follow() whether it paused itself on the way out,
+       so the track comes back only if the game did. */
+    if (!document.hidden) audio.music.background(false);
     updateParticles(dt);
 
     // shake decay
@@ -1399,7 +1449,14 @@
     requestAnimationFrame(frame);
   };
 
-  SG.pauseLoop = function (v) { running = !v; last = 0; };
+  SG.pauseLoop = function (v) {
+    running = !v;
+    last = 0;
+    // Nothing drives follow() while the loop is stopped, so a track
+    // left running plays on over the rotate overlay. Starting it again
+    // is frame()'s job, once a mode has had its say.
+    if (v) audio.music.background(true);
+  };
 
   /* Anything that takes the screen away - a notification, the app
      switcher, a call - can swallow the release for a finger that was
@@ -1407,12 +1464,20 @@
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) {
       input.releaseAll();
+      /* The loop stops when the page does, so nothing inside a mode can
+         reach follow() any more: a phone that switched apps kept the
+         track playing underneath whatever came next, and only killing
+         the tab stopped it. Silence it from out here instead. */
+      audio.music.background(true);
       if (current && current.onBlur) current.onBlur();
     }
     last = 0;
   });
   window.addEventListener('blur', function () { input.releaseAll(); });
-  window.addEventListener('pagehide', function () { input.releaseAll(); });
+  window.addEventListener('pagehide', function () {
+    input.releaseAll();
+    audio.music.background(true);
+  });
 
   // ---------------------------------------------------------------
   // Fullscreen / orientation / iOS add-to-home-screen

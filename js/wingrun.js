@@ -37,15 +37,23 @@
   var LANE_SNAP = 11;       // how fast the player slides between lanes
   var HURDLE_H = 0.78;      // must be above this to clear
   var LOWBAR_BOTTOM = 1.02; // must be sliding to pass under
+  /* ...or above this to go over the top of it, which only the slides
+     reach: a single jump tops out at 1.46. Both the drawn box and the
+     collision read it, so what you see is what you have to clear. */
+  var LOWBAR_TOP = 2.1;
   var BARRIER_H = 1.5;      // a crate needs real height
 
   /* Adidas slides: one extra jump per trip off the ground, for 10s.
      Measured, not derived: a single jump tops out at 1.46, because the
      continuous apex of 1.53 is never actually sampled at 60fps. That is
      under BARRIER_H, so a crate has never been jumpable however well
-     timed - lane change or nothing. The slides are the way over one, so
-     tune these and not JUMP_V - raising the base jump would make crates
-     free and take the pickup's whole job away.
+     timed - lane change or nothing. The slides are the way over a crate
+     and over the blue bar, so tune these and not JUMP_V - raising the
+     base jump would make both free and take the pickup's whole job
+     away. Measured: the double jump clears LOWBAR_TOP if the second
+     press lands anywhere from ~0.13s into the first jump onwards, and
+     leaves him above the bar for 0.3-0.55s. Early enough and he
+     doesn't make it, which is the point.
 
      `st.slide` is the crouch, `st.adidas` is this. One letter apart was
      not worth the bug. */
@@ -409,10 +417,15 @@
     }
   }
 
-  /* While the magnet is up - or the hot sauce, which also auto-collects
-     - wings peel out of their lane and curve into him, instead of being
-     silently hoovered at the moment they happen to arrive. Squaring the
-     ramp makes it start as a drift and finish as a snatch.
+  /* While the magnet is up, wings peel out of their lane and curve into
+     him, instead of being silently hoovered at the moment they happen
+     to arrive. Squaring the ramp makes it start as a drift and finish
+     as a snatch.
+
+     Wings and nothing else. The magnet is for the currency; pulling a
+     power-up in as well would mean the magnet hands you every other
+     power-up on the road, and hot sauce you never chose is hot sauce
+     that expires while you are looking the other way.
 
      `pull` is kept separate from `lane` and `wy` rather than moving
      them: the collect test still reads the real height, so a magnet
@@ -422,7 +435,7 @@
 
   function updateWingPull(en, dt) {
     var want = 0;
-    if (st.magnet > 0 || st.sauce > 0) {
+    if (st.magnet > 0) {
       var t = SG.clamp((PULL_Z - (en.z - PLAYER_Z)) / PULL_Z, 0, 1);
       want = t * t;
     }
@@ -517,11 +530,11 @@
     var sameLane = en.lane === null || en.lane === st.lane;
 
     if (en.type === 'wing') {
-      var grab = sameLane || st.magnet > 0 || st.sauce > 0;
+      var grab = sameLane || st.magnet > 0;
       if (grab) {
         // must be roughly at the wing's height
         var dy = Math.abs((st.y + 0.85) - en.wy);
-        if (st.magnet > 0 || st.sauce > 0 || dy < 1.25) {
+        if (st.magnet > 0 || dy < 1.25) {
           en.gone = true;
           st.wings++;
           st.streak++;
@@ -539,8 +552,13 @@
       return;
     }
 
+    /* Same lane, nothing else. The lanes are 1.75 apart and this used
+       to accept anything under 2, which is every adjacent lane - so a
+       power-up one lane over collected itself and the magnet looked
+       like it was reaching for them. Wings are the only thing that
+       comes to you, and only while the magnet is up. */
     if (en.type === 'magnet') {
-      if (sameLane || Math.abs(LANE_X[st.lane] - LANE_X[en.lane]) < 2) {
+      if (sameLane) {
         en.gone = true;
         st.magnet = 8;
         SG.audio.play('power');
@@ -552,7 +570,7 @@
     }
 
     if (en.type === 'adidas') {
-      if (sameLane || Math.abs(LANE_X[st.lane] - LANE_X[en.lane]) < 2) {
+      if (sameLane) {
         en.gone = true;
         st.adidas = ADIDAS_TIME;
         SG.audio.play('power');
@@ -564,12 +582,12 @@
     }
 
     if (en.type === 'sauce') {
-      if (sameLane || Math.abs(LANE_X[st.lane] - LANE_X[en.lane]) < 2) {
+      if (sameLane) {
         en.gone = true;
         st.sauce = 6;
         st.invuln = 6;
         SG.audio.play('sauce');
-        popup('HOT SAUCE!', SG.COLORS.sauce);
+        popup('HOT SAUCE - INVINCIBLE!', SG.COLORS.sauce);
         SG.shake(7);
         var hp = proj(LANE_X[en.lane], en.wy, PLAYER_Z);
         SG.burst(hp.x, hp.y, 24, { colors: ['#ff2d0a', '#ff8a1a', '#ffd400'], speedMax: 300, gravity: 120 });
@@ -585,7 +603,11 @@
     } else if (en.type === 'lowbar') {
       if (st.slide > 0 && st.y < 0.05) return;
       if (playerHeadroom() < LOWBAR_BOTTOM) return;
-      die();     // its drawn box tops out at 3.12, above the 3.06 apex
+      // Over the top is the slides' answer to it. The apex of a double
+      // jump is ~3.06 and the bar tops out at 2.1, so it was always
+      // physically clear - nothing was checking for it.
+      if (st.y > LOWBAR_TOP) return;
+      die();
     } else if (en.type === 'barrier') {
       if (st.y > BARRIER_H) return;         // only ever reached in the slides
       die();
@@ -1108,7 +1130,7 @@
     if (en.type === 'lowbar') {
       var hw = en.lane === null ? ROAD_HALF - 0.1 : 0.75;
       // bar
-      box(g, wx, hw, LOWBAR_BOTTOM, 2.1, en.z, 0.45, '#3d4b8e', '#5b6cc0', '#27306a');
+      box(g, wx, hw, LOWBAR_BOTTOM, LOWBAR_TOP, en.z, 0.45, '#3d4b8e', '#5b6cc0', '#27306a');
       // legs
       box(g, wx - hw + 0.18, 0.18, 0, LOWBAR_BOTTOM, en.z, 0.4, '#2b3468', '#3d4b8e', '#1d2450');
       box(g, wx + hw - 0.18, 0.18, 0, LOWBAR_BOTTOM, en.z, 0.4, '#2b3468', '#3d4b8e', '#1d2450');
